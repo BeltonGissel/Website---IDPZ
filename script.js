@@ -214,7 +214,7 @@ document.addEventListener("input",function(e){if(e.target.id==="sq"){F.q=e.targe
 document.addEventListener("change",function(e){var t=e.target;if(t.id==="so"){F.o=t.value;list()}
 if(t.name==="dl")$("#ad").style.display=t.value==="del"?"block":"none";
 if(t.name==="pm"){$("#wl").style.display="none";$("#cdn").style.display="block"}});
-document.addEventListener("submit",function(e){if(e.target.id!=="ckf")return;e.preventDefault();var v=function(i){return $("#"+i).value.trim()},er="",dl=document.querySelector("[name=dl]:checked").value,pmr=document.querySelector("[name=pm]:checked"),pm=pmr&&pmr.value,w=v("cw").replace(/\s|^\+?258/g,"");
+document.addEventListener("submit",function(e){if(e.target.id!=="ckf")return;e.preventDefault();var v=function(i){return $("#"+i).value.trim()},er="",dl=document.querySelector("[name=dl]:checked").value,pmr=document.querySelector("[name=pm]:checked"),pm=pmr&&pmr.value,w="";
 if(!v("cn"))er="Indica o teu nome.";else if(v("cp").replace(/\D/g,"").length<9)er="Indica um telefone válido.";else if(!/^\S+@\S+\.\S+$/.test(v("ce")))er="Indica um email válido.";else if(dl==="del"&&!v("ca"))er="Indica o endereço de entrega.";else if(!pm)er="Escolhe um método de pagamento.";
 
 $("#cer").textContent=er;if(er)return;
