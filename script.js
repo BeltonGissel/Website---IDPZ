@@ -1,0 +1,227 @@
+
+(function(){var $=function(x){return document.querySelector(x)},P=["home","sobre","reservar","loja","contacto","produto","carrinho","checkout","pedido"];
+function r(){var h=(location.hash||"#home").slice(1);if(h.indexOf("admin")===0){document.body.classList.add("adm");AH=h;admRender(true);window.scrollTo(0,0);return}document.body.classList.remove("adm");var pid=null;if(h.indexOf("produto-")===0){pid=h.slice(8);h="produto"}if(P.indexOf(h)<0)h="home";P.forEach(function(p){$("#v-"+p).classList.toggle("on",p===h)});var nh=["produto","carrinho","checkout","pedido"].indexOf(h)>=0?"loja":h;if(h==="produto")prod(pid);if(h==="carrinho")cartView();if(h==="checkout")checkout();if(h==="pedido")od();$("#fab").style.display=["loja","produto","checkout"].indexOf(h)>=0?"flex":"none";
+document.querySelectorAll("#nv a:not(.cta)").forEach(function(a){a.classList.toggle("on",a.getAttribute("href")==="#"+nh)});$("#nv").classList.remove("open");window.scrollTo(0,0)}
+addEventListener("hashchange",r);
+setTimeout(function(){var l=$("#ld");l.style.opacity=0;setTimeout(function(){l.remove()},400)},1200);
+$("#bg").onclick=function(){$("#nv").classList.toggle("open")};
+var st={s:0,day:null,court:null,time:null},D=[];for(var i=0;i<7;i++){var d=new Date();d.setDate(d.getDate()+i);D.push(d)}
+var C=["Campo 1","Campo 2","Campo 3","Campo 4"],T=["08:00","09:30","11:00","14:00","15:30","17:00","18:30"];
+function ch(L,k,f){return L.map(function(x,i){return '<button class="ch" aria-pressed="'+(st[k]===i)+'" data-k="'+k+'" data-i="'+i+'">'+f(x)+'</button>'}).join("")}
+function bk(){var h="";$("#stp").querySelectorAll("i").forEach(function(e,i){e.classList.toggle("on",i<=st.s)});
+if(st.s==0)h="<h3>1. Escolhe a data</h3><br>"+ch(D,"day",function(d){return d.toLocaleDateString("pt-PT",{weekday:"short",day:"numeric",month:"short"})});
+if(st.s==1)h="<h3>2. Escolhe o campo</h3><br>"+ch(C,"court",String);
+if(st.s==2)h="<h3>3. Escolhe a hora</h3><p style='font-size:.75rem;color:var(--mut)'>Horários de exemplo. Horários demonstrativos: disponibilidade sujeita a confirmação.</p>"+ch(T,"time",String);
+if(st.s==3)h='<h3>4. Os teus dados</h3><label for="bn">Nome completo</label><input id="bn"><label for="bt">Telefone</label><input id="bt" type="tel"><div class="er" id="be"></div>';
+if(st.s==4){var b=st.bk;h="<h3>"+(b.sync===true?"5. Pedido registado":b.sync===false?"5. Registo não concluído":"5. A processar pedido")+"</h3><p>Referência <b>"+b.ref+"</b><br>"+b.court+" · "+D[st.day].toLocaleDateString("pt-PT")+" · "+b.time+"</p><p style='font-size:.8rem;color:var(--mut)'>"+(b.sync===true?"Pedido registado. A equipa pode acompanhar a reserva no painel de gestão.":b.sync===false?"Falha ao registar no servidor. Contacta a equipa antes de considerar a reserva confirmada.":"A registar…")+"</p>"}
+h+="<div style='margin-top:20px;display:flex;gap:8px'>"+(st.s>0?'<button class="btn bo" id="bb" style="padding:10px 18px">Voltar</button>':"")+(st.s<4?'<button class="btn" id="nx" style="padding:10px 18px">'+(st.s==3?"Confirmar pedido":"Continuar")+'</button>':'<a class="btn" href="#home" style="padding:10px 18px">Voltar ao início</a>')+"</div>";
+$("#bk").innerHTML=h;
+ if(st.s===2&&st.day!==null&&st.court!==null){
+  var pickedDate=D[st.day],ds=pickedDate.getFullYear()+"-"+("0"+(pickedDate.getMonth()+1)).slice(-2)+"-"+("0"+pickedDate.getDate()).slice(-2);
+  request('/api/availability?date='+encodeURIComponent(ds)+'&court='+encodeURIComponent(C[st.court])).then(function(data){
+   if(st.s!==2)return;
+   document.querySelectorAll('#bk [data-k="time"]').forEach(function(btn){if(data.occupied.includes(T[+btn.dataset.i])){btn.disabled=true;btn.textContent=T[+btn.dataset.i]+" · Ocupado";btn.style.opacity='.45';if(st.time===+btn.dataset.i)st.time=null;}});
+  }).catch(function(){toast('Não foi possível verificar os horários. Tenta novamente.');});
+ }
+
+document.querySelectorAll("#bk .ch").forEach(function(c){c.onclick=function(){st[c.dataset.k]=+c.dataset.i;bk()}});
+if($("#bb"))$("#bb").onclick=function(){st.s--;bk()};
+if($("#nx"))$("#nx").onclick=function(){var k=["day","court","time"][st.s];if(k&&st[k]===null){alert("Faz uma selecção para continuar.");return}
+if(st.s==3&&(!$("#bn").value.trim()||!$("#bt").value.trim())){$("#be").textContent="Preenche o nome e o telefone.";return}if(st.s==3)st.bk=saveBooking($("#bn").value.trim(),$("#bt").value.trim());st.s++;bk()}}
+bk();
+var K=["Raquetes","Sapatilhas","Vestuário","Bolas","Mochilas e Sacos","Acessórios"],SZ={1:["38","39","40","41","42","43"],2:["S","M","L","XL"]},BR="Marca exemplo";
+var DS=["Raquete de padel para evoluir no jogo. A descrição técnica completa deve ser confirmada com o fornecedor.","Sapatilhas pensadas para o piso do padel. Detalhes técnicos por confirmar com o fornecedor.","Vestuário de jogo confortável para treinar e competir. Detalhes de tecido por confirmar.","Bolas de padel para jogo e treino. Detalhes por confirmar com o fornecedor.","Transporta o teu material de forma prática. Capacidade e materiais por confirmar.","Acessório útil para o teu jogo. Detalhes por confirmar com o fornecedor."];
+var PR=[
+{id:"raq1",c:0,t:"racket",col:"#1673B8",n:"Raquete Controlo Carbono",p:9500,s:8},
+{id:"raq2",c:0,t:"racket",col:"#0d3d6b",n:"Raquete Potência Diamante",p:6800,s:5},
+{id:"sap1",c:1,t:"shoe",col:"#1673B8",n:"Sapatilhas de Padel Aderência",p:5200,s:10},
+{id:"sap2",c:1,t:"shoe",col:"#101E29",n:"Sapatilhas Indoor Leves",p:4600,s:3},
+{id:"ves1",c:2,t:"shirt",col:"#CFF902",n:"T-shirt Técnica Respirável",p:1400,s:20},
+{id:"ves2",c:2,t:"shirt",col:"#1673B8",n:"Camisola de Manga Comprida",p:2100,s:6},
+{id:"bol1",c:3,t:"ball",col:"#CFF902",n:"Tubo de 3 Bolas de Padel",p:450,s:40},
+{id:"bol2",c:3,t:"ball",col:"#CFF902",n:"Cesto de 24 Bolas de Treino",p:4200,s:4},
+{id:"mo1",c:4,t:"bag",col:"#101E29",n:"Mochila de Padel",p:2800,s:7},
+{id:"mo2",c:4,t:"bag",col:"#1673B8",n:"Saco para Raquetes",p:1900,s:2},
+{id:"ac1",c:5,t:"grip",col:"#1673B8",n:"Overgrips (pack de 3)",p:300,s:60},
+{id:"ac2",c:5,t:"grip",col:"#101E29",n:"Munhequeiras (par)",p:250,s:0}];
+function gp(id){return PR.filter(function(x){return x.id===id})[0]}
+function money(n){return n.toLocaleString("pt-PT")+" MT"}
+function stk(p){return p.s<=0?"Esgotado":p.s<=3?"Últimas "+p.s+" unidades":"Em stock"}
+function art(p,v){var c=p.col,g="",i,x,y;
+if(p.t==="racket"){g='<ellipse cx="100" cy="78" rx="50" ry="60" fill="'+c+'"/><ellipse cx="100" cy="78" rx="41" ry="51" fill="#fff"/>';for(x=78;x<=122;x+=11)for(y=50;y<=106;y+=11)if(Math.pow((x-100)/36,2)+Math.pow((y-78)/46,2)<1)g+='<circle cx="'+x+'" cy="'+y+'" r="2.6" fill="'+c+'"/>';g+='<path d="M82 128L100 152L118 128z" fill="'+c+'"/><rect x="94" y="150" width="12" height="40" rx="5" fill="#101E29"/>'}
+if(p.t==="shoe")g='<path d="M26 132V92Q58 88 78 66L100 78Q120 98 152 104Q178 108 180 132z" fill="'+c+'"/><rect x="22" y="130" width="162" height="16" rx="8" fill="#101E29"/><path d="M84 76l12 18M98 84l12 16M112 92l10 14" stroke="#CFF902" stroke-width="4" stroke-linecap="round"/>';
+if(p.t==="shirt")g='<path d="M70 38L100 52L130 38L174 62L156 94L138 84V162H62V84L44 94L26 62z" fill="'+c+'"/><path d="M84 40Q100 64 116 40" stroke="#101E29" stroke-width="5" fill="none"/>';
+if(p.t==="ball")g='<circle cx="100" cy="100" r="54" fill="#CFF902"/><path d="M58 66Q104 100 58 136M142 64Q96 100 142 134" stroke="#fff" stroke-width="5" fill="none"/>';
+if(p.t==="bag")g='<path d="M78 62Q78 32 100 32Q122 32 122 62" stroke="#101E29" stroke-width="7" fill="none"/><rect x="48" y="58" width="104" height="116" rx="24" fill="'+c+'"/><rect x="66" y="112" width="68" height="46" rx="10" fill="#fff" opacity=".25"/><path d="M60 92H140" stroke="#CFF902" stroke-width="4"/>';
+if(p.t==="grip")g='<rect x="46" y="64" width="108" height="30" rx="15" fill="'+c+'"/><rect x="46" y="104" width="108" height="30" rx="15" fill="#CFF902"/><rect x="46" y="144" width="108" height="30" rx="15" fill="'+c+'" opacity=".7"/>';
+var bg=["#e9f1f8","#dfe9f2","#eef3df","#101E29"][v],tr=["","translate(100 100) scale(1.9) translate(-100 -92)","rotate(-18 100 100)","translate(100 100) scale(.85) translate(-100 -100)"][v];
+return '<svg viewBox="0 0 200 200" role="img" aria-label="'+p.n+' (imagem ilustrativa)"><rect width="200" height="200" fill="'+bg+'"/><g transform="'+tr+'">'+g+'</g></svg>'}
+function card(p){var o=p.s<=0;return '<div class="pc"><a href="#produto-'+p.id+'" aria-label="'+p.n+'">'+art(p,0)+'</a><div class="pb"><small>'+K[p.c]+" · "+BR+'</small><h3><a href="#produto-'+p.id+'">'+p.n+'</a></h3><div class="pp">'+money(p.p)+'</div><small class="'+(o?"out":"ok")+'">'+stk(p)+'</small>'+(o?"":SZ[p.c]?'<a class="btn" href="#produto-'+p.id+'">Escolher tamanho</a>':'<button class="btn" data-add="'+p.id+'">Adicionar ao carrinho</button>')+'</div></div>'}
+var F={c:-1,q:"",o:"f"},cart=[],ps={},ord=null;
+try{cart=JSON.parse(localStorage.getItem("ipz-cart")||"[]").filter(function(l){return gp(l.id)})}catch(e){cart=[]}
+function cc(){var n=0;cart.forEach(function(l){n+=l.q});$("#fc").textContent=n;try{localStorage.setItem("ipz-cart",JSON.stringify(cart))}catch(e){}}
+function tot(){var t=0;cart.forEach(function(l){t+=gp(l.id).p*l.q});return t}
+function toast(t){var e=$("#tt");e.textContent=t;e.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(function(){e.classList.remove("on")},2000)}
+function msg(t){var e=$("#pm");if(e)e.textContent=t;else toast(t)}
+function cats(){$("#cats").innerHTML=["Todos"].concat(K).map(function(c,i){return '<button class="ch" aria-pressed="'+(i-1===F.c)+'" data-c="'+(i-1)+'">'+c+"</button>"}).join("")}
+function list(){var a=PR.filter(function(p){return p.pub!==false&&(F.c<0||p.c===F.c)&&(!F.q||(p.n+" "+K[p.c]).toLowerCase().indexOf(F.q)>=0)});
+if(F.o==="a")a.sort(function(x,y){return x.p-y.p});if(F.o==="d")a.sort(function(x,y){return y.p-x.p});
+$("#prods").innerHTML=a.length?a.map(card).join(""):'<p>Nenhum produto encontrado. <button class="lk" data-clr="1">Limpar filtros</button></p>'}
+function add(id,sz,q){var p=gp(id);if(!p||p.s<=0){msg("Produto esgotado.");return false}
+if(SZ[p.c]&&!sz){msg("Escolhe o tamanho antes de adicionar.");return false}
+var have=0,ln=null;cart.forEach(function(l){if(l.id===id){have+=l.q;if(l.sz===sz)ln=l}});
+if(have+q>p.s){msg("Só existem "+p.s+" unidades em stock.");return false}
+if(ln)ln.q+=q;else cart.push({id:id,sz:sz,q:q});cc();toast("Adicionado ao carrinho");return true}
+function prod(id){var p=gp(id);if(!p){$("#pv").innerHTML='<p>Produto não encontrado.</p><a class="btn" href="#loja">Voltar à loja</a>';return}ps={id:id,sz:null,q:1,v:0};drawP()}
+function drawP(){var p=gp(ps.id),o=p.s<=0,rel=PR.filter(function(x){return x.c===p.c&&x.id!==p.id}).concat(PR.filter(function(x){return x.c!==p.c})).slice(0,3);
+var h='<a href="#loja" class="lk" style="margin:0">← Voltar à loja</a><div class="pv" style="margin-top:14px"><div><div class="zm" id="zm">'+art(p,ps.v)+'</div><div class="ths">'+[0,1,2,3].map(function(i){return '<button data-th="'+i+'" aria-pressed="'+(i===ps.v)+'" aria-label="Foto '+(i+1)+'">'+art(p,i)+"</button>"}).join("")+'</div></div><div>';
+h+='<small style="color:var(--mut)">'+K[p.c]+" · "+BR+'</small><h2 style="text-transform:none;margin:6px 0 10px">'+p.n+'</h2><div class="pp" style="font-size:1.5rem">'+money(p.p)+'</div><small class="'+(o?"out":"ok")+'">'+stk(p)+'</small>';
+if(SZ[p.c])h+='<label>Tamanho</label><div>'+SZ[p.c].map(function(z){return '<button class="ch" data-sz="'+z+'" aria-pressed="'+(ps.sz===z)+'">'+z+"</button>"}).join("")+"</div>";
+h+='<label>Quantidade</label><div class="qt"><button data-q="-1" aria-label="Menos">−</button><span>'+ps.q+'</span><button data-q="1" aria-label="Mais">+</button></div><div class="er" id="pm" style="margin-top:8px"></div>';
+h+=o?'<p class="out">Produto esgotado.</p>':'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn" data-addp="1" style="padding:13px 20px">Adicionar ao carrinho</button><button class="btn bo" data-buy="1" style="padding:13px 20px">Comprar agora</button></div>';
+h+='<h3 style="margin:26px 0 8px;font-size:1rem">Descrição</h3><p style="color:var(--mut);font-size:.85rem">'+DS[p.c]+'</p><h3 style="margin:20px 0 8px;font-size:1rem">Especificações</h3><table class="spt"><tr><td>Categoria</td><td>'+K[p.c]+'</td></tr><tr><td>Marca</td><td>[por confirmar]</td></tr><tr><td>Material</td><td>[por confirmar]</td></tr><tr><td>Referência</td><td>'+p.id.toUpperCase()+'</td></tr></table><h3 style="margin:20px 0 8px;font-size:1rem">Entrega ou levantamento</h3><p style="color:var(--mut);font-size:.85rem">Levantamento na loja ou entrega local. Prazos e taxas: [por confirmar pela Indoor Padel Zone].</p></div></div>';
+h+='<h2 style="margin:44px 0 14px;font-size:1.4rem">Também te pode interessar</h2><div class="pg">'+rel.map(card).join("")+"</div>";
+$("#pv").innerHTML=h;var z=$("#zm"),sv=z.querySelector("svg");z.onmousemove=function(e){var r=z.getBoundingClientRect();sv.style.transformOrigin=((e.clientX-r.left)/r.width*100)+"% "+((e.clientY-r.top)/r.height*100)+"%"}}
+function cartView(){var el=$("#cv");if(!cart.length){el.innerHTML='<p>O teu carrinho está vazio.</p><a class="btn" href="#loja">Ir para a loja</a>';return}
+el.innerHTML=cart.map(function(l,i){var p=gp(l.id);return '<div class="it"><div class="ti">'+art(p,0)+'</div><div><h3>'+p.n+'</h3><small>'+(l.sz?"Tamanho "+l.sz+" · ":"")+money(p.p)+'</small><div class="qt"><button data-cq="'+i+':-1" aria-label="Menos">−</button><span>'+l.q+'</span><button data-cq="'+i+':1" aria-label="Mais">+</button><button class="lk" data-rm="'+i+'">Remover</button></div></div><b>'+money(p.p*l.q)+"</b></div>"}).join("")+'<div class="sum"><div><span>Subtotal</span><b>'+money(tot())+'</b></div><div><span>Entrega</span><span>a confirmar</span></div><div class="tt2"><span>Total</span><b>'+money(tot())+'</b></div><a class="btn" href="#checkout">Finalizar compra<i class="arr">↗</i></a><a class="btn bo" href="#loja">Continuar a comprar</a></div>'}
+function checkout(){if(!cart.length){location.hash="#carrinho";return}
+$("#ck").innerHTML='<div class="two"><form id="ckf" novalidate><label for="cn">Nome completo</label><input id="cn" autocomplete="name"><label for="cp">Telefone</label><input id="cp" type="tel" autocomplete="tel"><label for="ce">Email</label><input id="ce" type="email" autocomplete="email">'
++'<label>Entrega</label><label class="po"><input type="radio" name="dl" value="pick" checked>Levantar na loja</label><label class="po"><input type="radio" name="dl" value="del">Entrega local (taxa a confirmar)</label><div id="ad" style="display:none"><label for="ca">Endereço de entrega</label><input id="ca" autocomplete="street-address"></div>'
++'<label>Pagamento</label><label class="po"><input type="radio" name="pm" value="card">Cartão</label><label class="po"><input type="radio" name="pm" value="emola">e-Mola</label><label class="po"><input type="radio" name="pm" value="mpesa">M-Pesa</label>'
++'<div id="wl" style="display:none"></div><div class="nt" id="cdn">Pagamento exclusivamente simulado. Não introduzas dados de cartão nem de carteira móvel. Nenhuma cobrança será efectuada.</div>'
++'<label for="co">Notas (opcional)</label><textarea id="co" rows="2"></textarea><div class="er" id="cer" style="margin:10px 0"></div><button class="btn" type="submit" style="padding:13px 22px">Confirmar pedido</button></form>'
++'<div><h3 style="margin-bottom:12px">Resumo</h3>'+cart.map(function(l){var p=gp(l.id);return '<div style="display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:.85rem"><span>'+l.q+"× "+p.n+(l.sz?" ("+l.sz+")":"")+"</span><b>"+money(p.p*l.q)+"</b></div>"}).join("")+'<div class="sum" style="margin:14px 0 0"><div class="tt2"><span>Total</span><b>'+money(tot())+'</b></div></div></div></div>'}
+function od(){if(!ord){location.hash="#loja";return}var m=PM[ord.pm],sy=ord.sync===true?"Registado no painel da loja.":ord.sync===false?"Falha ao registar no servidor. Contacta a equipa antes de considerar a reserva confirmada.":"A registar…";
+$("#od").innerHTML='<div class="dm">'+(ord.sync===false?"REGISTO NÃO CONCLUÍDO":ord.sync===true?"PAGAMENTO SIMULADO ACEITE · SEM COBRANÇA REAL":"A PROCESSAR PEDIDO · SEM COBRANÇA REAL")+'</div><h2 style="margin-bottom:14px">'+(ord.sync===false?"Erro ao finalizar pedido":ord.sync===true?"Compra registada":"A confirmar pedido")+'</h2><div class="cd" style="max-width:560px;min-height:0;line-height:1.9;font-size:.9rem">Referência: <b>'+E(ord.ref)+'</b><br>Pagamento: '+m+' · <b>'+(ord.sync===true?'Pago (simulado)':ord.sync===false?'Não registado':'A validar')+'</b><br>Estado: Por processar<br>Entrega: '+(ord.dl==="del"?"Entrega local — "+E(ord.a):"Levantamento na loja")+'<br><br>'+ord.items.map(function(l){return E(l.q+"× "+l.n+(l.sz?" ("+l.sz+")":""))+" — "+money(l.t)}).join("<br>")+'<br><br><b>Total: '+money(ord.total)+'</b><br><br><small>'+sy+'</small></div><p style="margin-top:16px"><a class="btn" href="#loja">Continuar a comprar</a> <a class="btn bo" href="#contacto">Contactar a loja</a></p>'}
+var REMOTE=false,DB=null,UID=null,CW=null,IS_ADM=false,ROLE=null,READY=false,ORD=[],BKG=[],MSG=[],AH="admin",AQ="",busy=false;
+var E=function(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})};
+function nowIso(){return new Date().toISOString()}
+function pushList(col,item){
+ if(REMOTE)return fetch('/api/submit/'+col,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)}).then(async function(r){var j=await r.json();if(!r.ok)throw Error(j.error||'Não foi possível guardar');if(col==='orders'&&ord&&ord.ref===item.ref)Object.assign(ord,j.item);if(col==='bookings'&&st.bk&&st.bk.ref===item.ref)Object.assign(st.bk,j.item);return true}).catch(function(err){toast(err.message);return false});
+ if(!DB||!UID||CW===false)return Promise.resolve(false);var ref=DB.collection(col).doc(UID);
+ return ref.get().then(function(s){var l=s.exists?(s.data().list||[]):[];l.push(item);return ref.set({list:l})}).then(function(){return true},function(){return false})
+}
+function updItem(col,u,rf,patch){
+ if(!REMOTE)return Promise.reject(Error('Servidor indisponível'));
+ return request('/api/item/'+col+'/'+encodeURIComponent(rf),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(patch)});
+}
+function flat(snap){var a=[];snap.docs.forEach(function(d){((d.data()||{}).list||[]).forEach(function(o){a.push(Object.assign({},o,{_u:d.id}))})});a.sort(function(x,y){return(y.at||"")>(x.at||"")?1:-1});return a}
+function prodSnap(snap){snap.docs.forEach(function(d){var x=d.data(),p=gp(d.id);if(p){if(typeof x.p==="number")p.p=x.p;if(typeof x.s==="number")p.s=x.s;p.pub=x.pub!==false}else if(x.custom){PR.push({id:d.id,c:x.c,t:["racket","shoe","shirt","ball","bag","grip"][x.c],col:"#1673B8",n:x.n,p:x.p,s:x.s,pub:x.pub!==false})}});
+cats();list();hf();if($("#v-produto").classList.contains("on")&&ps.id&&gp(ps.id))drawP();admRefresh()}
+function stockSet(id,fn){var p=gp(id);if(!p)return Promise.resolve();var ref=DB.collection("products").doc(id);return ref.get().then(function(s){var b=s.exists?s.data():{p:p.p,s:p.s,pub:true};return ref.set(Object.assign({},b,{s:Math.max(0,fn(typeof b.s==="number"?b.s:p.s))}))})}
+function applyStock(){if(REMOTE||busy||!IS_ADM)return;var o=ORD.filter(function(x){return!x.ap&&x.st!=="Cancelado"})[0];if(!o)return;busy=true;var ch=Promise.resolve();
+o.items.forEach(function(it){ch=ch.then(function(){return stockSet(it.id,function(c){return c-it.q})})});
+ch.then(function(){return updItem("orders",o._u,o.ref,{ap:true})}).then(function(){busy=false;applyStock()},function(){busy=false})}
+function subAdm(){["orders","bookings","messages"].forEach(function(c){DB.collection(c).onSnapshot(function(snap){var a=flat(snap);if(c==="orders"){ORD=a;applyStock()}else if(c==="bookings")BKG=a;else MSG=a;admRefresh()},function(){})})}
+// Armazenamento de demonstração. Não é um servidor nem oferece autenticação real.
+function localDB(){
+  var prefix="ipz-demo-v2-", watchers={}, channel=null;
+  try{if("BroadcastChannel" in window){channel=new BroadcastChannel("ipz-admin-sync");channel.onmessage=function(e){if(e.data&&e.data.collection)emit(e.data.collection)}}}catch(e){}
+  function key(c,id){return prefix+c+"-"+id}
+  function get(c,id){try{return JSON.parse(localStorage.getItem(key(c,id))||"null")}catch(e){return null}}
+  function all(c){var docs=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i),pre=prefix+c+"-";if(k&&k.indexOf(pre)===0){var id=k.slice(pre.length),data=get(c,id);if(data)docs.push({id:id,data:function(v){return function(){return v}}(data)})}}}catch(e){}return{docs:docs}}
+  function emit(c){(watchers[c]||[]).forEach(function(fn){try{fn(all(c))}catch(e){console.error(e)}})}
+  window.addEventListener("storage",function(e){if(e.key&&e.key.indexOf(prefix)===0){var col=e.key.slice(prefix.length).split("-")[0];emit(col)}});
+  return {collection:function(c){return{
+    doc:function(id){return{
+      get:function(){var v=get(c,id);return Promise.resolve({exists:v!==null,data:function(){return v}})},
+      set:function(v){try{localStorage.setItem(key(c,id),JSON.stringify(v))}catch(e){return Promise.reject(e)}emit(c);if(channel)channel.postMessage({collection:c});return Promise.resolve()}
+    }},
+    onSnapshot:function(fn){(watchers[c]||(watchers[c]=[])).push(fn);fn(all(c));return function(){watchers[c]=watchers[c].filter(function(f){return f!==fn})}}
+  }}};
+}
+// Cliente da API partilhada. A leitura de dados privados exige sessão admin.
+function request(url,opts){return fetch(url,Object.assign({credentials:'same-origin'},opts||{})).then(async function(r){var j=await r.json();if(!r.ok)throw Error(j.error||'Erro da API');return j})}
+function remoteDB(){return {collection:function(c){return{
+ doc:function(id){return{
+  get:function(){return request('/api/doc/'+c+'/'+encodeURIComponent(id)).then(function(v){return{exists:v.exists,data:function(){return v.data}}})},
+  set:function(value){return request('/api/doc/'+c+'/'+encodeURIComponent(id),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(value)})}
+ }},
+ onSnapshot:function(fn){var active=true,previous='';function poll(){if(!active)return;request('/api/snapshot/'+c).then(function(v){var key=JSON.stringify(v.docs);if(key===previous)return;previous=key;fn({docs:v.docs.map(function(o){return{id:o.id,data:function(){return o.data}}})})}).catch(function(e){console.warn('Sincronização '+c,e.message)})}poll();var timer=setInterval(poll,2500);return function(){active=false;clearInterval(timer)}}
+}}}}
+function beginData(){DB=REMOTE?remoteDB():localDB();UID='local';CW=true;READY=true;
+ DB.collection('products').onSnapshot(prodSnap);if(IS_ADM)subAdm();admRenderIfNeeded()}
+function admRenderIfNeeded(){if(document.body.classList.contains('adm'))admRender(true)}
+function initData(){request('/api/session').then(function(v){REMOTE=true;IS_ADM=!!v.admin;ROLE=v.role||null;beginData()},function(){REMOTE=true;IS_ADM=false;ROLE=null;beginData();toast('Sem ligação ao servidor. Compras e reservas não podem ser registadas.')})}
+function loginAdmin(email,password){return request('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:password})}).then(function(v){IS_ADM=true;ROLE=v.role;ORD=[];BKG=[];MSG=[];subAdm();admRender(true)})}
+
+var SO=["Por processar","Em preparação","Pronto","Entregue","Cancelado"],SB=["Pendente","Confirmada","Cancelada"],PM={card:"Cartão",emola:"e-Mola",mpesa:"M-Pesa"};
+function fd(i){var d=new Date(i);return isNaN(d)?"":d.toLocaleDateString("pt-PT")+" "+d.toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"})}
+function sel(list,v,at){return "<select "+at+">"+list.map(function(x){return "<option"+(x===v?" selected":"")+">"+x+"</option>"}).join("")+"</select>"}
+function chip(s){var c={Entregue:"g",Confirmada:"g",Pago:"g",Cancelado:"r",Cancelada:"r","Por processar":"y",Pendente:"y"}[s]||"b";return '<span class="cp2 '+c+'">'+E(s)+"</span>"}
+function mt(o){return!AQ||JSON.stringify(o).toLowerCase().indexOf(AQ)>=0}
+function admRender(sh){var el=$("#adm");if(!READY){el.innerHTML='<div class="ax">A carregar…</div>';return}
+if(!IS_ADM){el.innerHTML='<div class="ax ipz-login"><div class="ipz-login-mark">◉</div><h2>Área reservada</h2><p>Inicia sessão com as credenciais de Admin ou Recepcionista.</p><form id="admin-login"><label for="admin-email">Email profissional</label><input type="email" id="admin-email" required autocomplete="username" placeholder="nome@idpz.com"><label for="admin-pass">Palavra-passe</label><input type="password" id="admin-pass" required autocomplete="current-password"><div class="er" id="login-error" role="alert"></div><button class="btn" type="submit" style="margin-top:16px">Entrar no painel</button> <a class="btn bo" href="#home">Voltar ao site</a></form></div>';return}
+if(ROLE!=="admin"&&AH==="admin-produtos")AH="admin";if(sh||!el.querySelector(".ad-wrap")){var nav=[["admin","Painel"],["admin-pedidos","Compras"],["admin-reservas","Reservas"]].concat(ROLE==="admin"?[["admin-produtos","Produtos"]]:[]).concat([["admin-mensagens","Mensagens"]]),lg=($(".hl")||{}).src||"";
+var nb=MSG.filter(function(m){return!m.rd}).length;
+el.innerHTML='<div class="ad-wrap"><aside class="ad-sb"><a href="#home" aria-label="Ver o site"><img src="'+lg+'" alt="Indoor Padel Zone"></a><div class="ad-mn">MENU</div>'+nav.map(function(n){return '<a class="nl'+(n[0]===AH?" on":"")+'" href="#'+n[0]+'"><i></i>'+n[1]+(n[0]==="admin-mensagens"&&nb?'<b class="nbd">'+nb+"</b>":"")+"</a>"}).join("")+'<div class="ad-mn">GERAL</div><button class="nl" data-logout="1" style="border:0;text-align:left;width:100%;cursor:pointer">Terminar sessão</button><a class="nl" href="#home"><i></i>Ver o site</a><a class="nl" href="#loja"><i></i>Ver a loja</a><div class="ad-card"><b>Compras e reservas</b><br><span style="opacity:.75">Dados centralizados no servidor quando iniciado com npm start.</span></div></aside><div class="ad-main"><div class="ad-top"><input id="aq" type="search" placeholder="Pesquisar" aria-label="Pesquisar" value="'+E(AQ)+'"><div class="ad-pf"><i>A</i><div><b>'+(ROLE==="admin"?"Administração":"Recepcionista")+'</b><br><small>'+(ROLE==="admin"?"admin@idpz.com":"geral@idpz.com")+'</small></div></div></div><div class="ad-demo"><b>Pagamento simulado</b> · As compras são aceites automaticamente sem cobrança bancária. '+(REMOTE?'Registos partilhados pelo servidor.':'Pré-visualização local: dados limitados a este navegador.')+'</div><div class="ad-pg" id="adc"></div></div></div>'}
+admContent()}
+function admRefresh(){if(document.body.classList.contains("adm")&&$("#adc")&&IS_ADM){var nb=MSG.filter(function(m){return!m.rd}).length,l=document.querySelector('a[href="#admin-mensagens"]');if(l)l.innerHTML="<i></i>Mensagens"+(nb?'<b class="nbd">'+nb+"</b>":"");admContent()}else if(document.body.classList.contains("adm"))admRender(true)}
+function hd(t,s,x){return '<div class="ah"><div><h1>'+t+"</h1><p>"+s+"</p></div><div>"+(x||"")+"</div></div>"}
+function admContent(){var el=$("#adc"),h=AH;el.innerHTML=h==="admin-pedidos"?tbO():h==="admin-reservas"?tbB():h==="admin-produtos"?(ROLE==="admin"?tbP():dash()):h==="admin-mensagens"?tbM():dash()}
+function dash(){var ok=ORD.filter(function(o){return o.st!=="Cancelado"}),rev=0,i;ok.forEach(function(o){rev+=o.total});
+var pend=BKG.filter(function(b){return b.st==="Pendente"}).length,unr=MSG.filter(function(m){return!m.rd}).length,days=[],mx=1,best=null;
+for(i=6;i>=0;i--){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);days.push({d:d,n:0})}
+ok.forEach(function(o){var t=new Date(o.at);t.setHours(0,0,0,0);days.forEach(function(x){if(x.d.getTime()===t.getTime())x.n++})});
+days.forEach(function(x){if(x.n>mx)mx=x.n;if(x.n&&(!best||x.n>best.n))best=x});
+var bars=days.map(function(x){return '<div class="bc"><div class="bb '+(x.n?(x===best?"hi":"md"):"hz")+'" style="height:'+(x.n?30+70*x.n/mx:40)+'%">'+(x.n||"")+"</div><small>"+"DSTQQSS".charAt(x.d.getDay())+"</small></div>"}).join("");
+var nowT=new Date(),nx=BKG.filter(function(b){return b.st!=="Cancelada"&&new Date(b.date+"T"+b.time)>=nowT}).sort(function(a,b){return(a.date+a.time)>(b.date+b.time)?1:-1})[0];
+var ty=nowT.getFullYear()+"-"+("0"+(nowT.getMonth()+1)).slice(-2)+"-"+("0"+nowT.getDate()).slice(-2),hoje=BKG.filter(function(b){return b.date===ty&&b.st!=="Cancelada"});
+var dn=ok.filter(function(o){return o.st==="Entregue"}).length,pg=ok.filter(function(o){return o.st==="Em preparação"||o.st==="Pronto"}).length,pd=ok.length-dn-pg,pc=ok.length?Math.round(dn/ok.length*100):0,a1=ok.length?dn/ok.length*100:0,a2=ok.length?pg/ok.length*100:0,a3=ok.length?pd/ok.length*100:0;
+var arc='<path d="M20 100A80 80 0 0 1 180 100" pathLength="100" fill="none" stroke-width="26" stroke-linecap="butt" ';
+var low=PR.filter(function(p){return p.pub!==false&&p.s<=3}).sort(function(a,b){return a.s-b.s}).slice(0,5),cl=["#fbd5d5","#d5f0c8","#d5dcfb","#fbe9c4"];
+return hd("Painel","Compras, reservas e mensagens do website.",(ROLE==='admin'?'<a class="btn" href="#admin-produtos" style="padding:11px 20px">+ Adicionar Produto</a> ':'')+'<button class="btn bo" data-ex="1" style="padding:11px 20px">Exportar Dados</button>')+
+'<div class="dg"><div class="kp k1"><div class="kt">Compras totais<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+ORD.length+'</div><small>'+ORD.filter(function(o){return o.st==="Por processar"}).length+' por processar</small></div>'+
+'<div class="kp"><div class="kt">Receita da loja<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+rev.toLocaleString("pt-PT")+'<small> MT</small></div><small class="gr">Sem compras canceladas</small></div>'+
+'<div class="kp"><div class="kt">Reservas<a href="#admin-reservas" class="ka">↗</a></div><div class="kn">'+BKG.length+'</div><small class="gr">'+pend+' por confirmar</small></div>'+
+'<div class="kp"><div class="kt">Mensagens<a href="#admin-mensagens" class="ka">↗</a></div><div class="kn">'+MSG.length+'</div><small class="gr">'+unr+' por ler</small></div>'+
+'<div class="kp span2"><div class="kt">Compras nos últimos 7 dias</div><div class="bs">'+bars+'</div></div>'+
+'<div class="kp"><div class="kt">Próxima reserva</div>'+(nx?'<div class="rm">'+E(nx.court)+"</div><small>"+E(nx.date.split("-").reverse().join("/"))+" · "+E(nx.time)+"<br>"+E(nx.cn)+"</small>":'<div class="rm" style="font-size:1rem;color:#7b8892">Sem reservas futuras</div>')+'<a class="btn" href="#admin-reservas" style="margin-top:14px;justify-content:center;padding:11px 16px">Ver reservas</a></div>'+
+'<div class="kp"><div class="kt">Stock baixo<a href="#admin-produtos" class="ka">↗</a></div>'+(low.length?low.map(function(p){return '<div class="li"><span>'+E(p.n)+"</span><b>"+(p.s<=0?"Esgotado":p.s+" un.")+"</b></div>"}).join(""):"<small>Tudo em ordem.</small>")+"</div>"+
+'<div class="kp span2"><div class="kt">Compras recentes<a href="#admin-pedidos" class="ka">↗</a></div>'+(ok.length?ok.slice(0,4).map(function(o,i){var n=o.items.reduce(function(a,x){return a+x.q},0);return '<div class="li" style="align-items:center"><span style="display:flex;gap:10px;align-items:center"><i class="av" style="background:'+cl[i%4]+'">'+E((o.cn||"?").charAt(0).toUpperCase())+"</i><span><b>"+E(o.cn)+"</b><br><small>"+n+" item(s) · "+o.total.toLocaleString("pt-PT")+" MT</small></span></span>"+chip(o.st)+"</div>"}).join(""):"<small>Ainda não há compras.</small>")+"</div>"+
+'<div class="kp"><div class="kt">Estado das compras</div><svg viewBox="0 0 200 110" style="width:100%;margin-top:8px">'+arc+'stroke="#e3e8ec" d="M20 100A80 80 0 0 1 180 100"/>'+arc+'stroke="#101E29" stroke-dasharray="'+a1+' 100"/>'+arc+'stroke="#1673B8" stroke-dasharray="'+a2+' 100" stroke-dashoffset="'+(-a1)+'"/>'+arc+'stroke="#CFF902" stroke-dasharray="'+a3+' 100" stroke-dashoffset="'+(-(a1+a2))+'"/><text x="100" y="92" text-anchor="middle" font-size="34" font-weight="700" fill="#101E29">'+pc+'%</text></svg><div class="lg2"><span><i style="background:#101E29"></i>Entregue</span><span><i style="background:#1673B8"></i>Em curso</span><span><i style="background:#CFF902"></i>Por processar</span></div></div>'+
+'<div class="kp k2"><div class="kt" style="color:#fff">Reservas de hoje</div><div class="kn" style="color:#CFF902">'+hoje.length+'</div><small style="color:#cdd6dd">'+(hoje.length?"Próxima às "+E(hoje.sort(function(a,b){return a.time>b.time?1:-1})[0].time):"Nenhuma reserva hoje")+"</small></div></div>"}
+function tbO(){var a=ORD.filter(mt);return hd("Compras","Todas as compras feitas na loja.",'<button class="btn bo" data-ex="1" style="padding:11px 20px">Exportar CSV</button>')+'<div class="tw"><table class="tb2"><tr><th>Referência</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Entrega</th><th>Estado</th></tr>'+(a.length?a.map(function(o){return '<tr><td><b>'+E(o.ref)+"</b><br><small>"+fd(o.at)+"</small></td><td>"+E(o.cn)+"<br><small>"+E(o.cp)+" · "+E(o.ce)+"</small></td><td>"+o.items.map(function(x){return E(x.q+"× "+x.n+(x.sz?" ("+x.sz+")":""))}).join("<br>")+"</td><td><b>"+money(o.total)+"</b></td><td>"+chip("Pago")+"<br><small>"+(PM[o.pm]||"")+(o.w?" "+E(o.w):"")+"<br>aceite automaticamente</small></td><td>"+(o.dl==="del"?"Entrega: "+E(o.a):"Levantamento")+"</td><td>"+sel(SO,o.st,'data-os="'+E(o._u)+"|"+E(o.ref)+'"')+"</td></tr>"}).join(""):'<tr><td colspan="7">Ainda não há compras.</td></tr>')+"</table></div>"}
+function tbB(){var a=BKG.filter(mt);return hd("Reservas","Pedidos de reserva feitos no site. Confirma ou cancela.","")+'<div class="tw"><table class="tb2"><tr><th>Referência</th><th>Campo</th><th>Data e hora</th><th>Cliente</th><th>Estado</th></tr>'+(a.length?a.map(function(b){return "<tr><td><b>"+E(b.ref)+"</b><br><small>"+fd(b.at)+"</small></td><td>"+E(b.court)+"</td><td>"+E(b.date.split("-").reverse().join("/"))+" · "+E(b.time)+"</td><td>"+E(b.cn)+"<br><small>"+E(b.cp)+"</small></td><td>"+sel(SB,b.st,'data-bs="'+E(b._u)+"|"+E(b.ref)+'"')+"</td></tr>"}).join(""):'<tr><td colspan="5">Ainda não há reservas.</td></tr>')+"</table></div>"}
+function tbP(){var a=PR.filter(mt);return hd("Produtos","Preços, stock e publicação. As alterações aparecem logo na loja.","")+'<div class="tw"><table class="tb2"><tr><th>Produto</th><th>Categoria</th><th>Preço (MT)</th><th>Stock</th><th>Publicado</th></tr>'+a.map(function(p){return "<tr><td>"+E(p.n)+"</td><td>"+K[p.c]+'</td><td><input type="number" min="0" value="'+p.p+'" data-pf="'+p.id+'|p" style="width:110px"></td><td><input type="number" min="0" value="'+p.s+'" data-pf="'+p.id+'|s" style="width:90px"></td><td><input type="checkbox" '+(p.pub!==false?"checked":"")+' data-pf="'+p.id+'|pub" style="width:auto"></td></tr>'}).join("")+'</table></div><form id="npf" class="tw" style="margin-top:14px;padding:16px"><h3 style="margin-bottom:6px">Novo produto</h3><div class="npg"><div><label for="np1">Nome</label><input id="np1" required></div><div><label for="np2">Categoria</label><select id="np2" style="padding:12px;border-radius:12px;border:1.5px solid #dde3e8;width:100%;font:inherit">'+K.map(function(k,i){return '<option value="'+i+'">'+k+"</option>"}).join("")+'</select></div><div><label for="np3">Preço (MT)</label><input id="np3" type="number" min="0" required></div><div><label for="np4">Stock</label><input id="np4" type="number" min="0" required></div></div><button class="btn" type="submit" style="margin-top:14px;padding:11px 20px">Adicionar produto</button></form>'}
+function tbM(){var a=MSG.filter(mt);return hd("Mensagens","Mensagens enviadas pelo formulário Fale Connosco.","")+(a.length?a.map(function(m){return '<div class="kp" style="margin-bottom:10px"><div class="kt"><span>'+E(m.n)+" · <small>"+E(m.e)+" · "+fd(m.at)+"</small></span>"+(m.rd?'<span class="cp2 b">Lida</span>':'<button class="btn" data-mr="'+E(m._u)+"|"+E(m.ref)+'" style="padding:7px 14px">Marcar como lida</button>')+"</div><p style=\"margin:8px 0 0\">"+E(m.m)+"</p></div>"}).join(""):'<div class="kp">Ainda não há mensagens.</div>')}
+function csv(){var q=function(x){return '"'+String(x==null?"":x).replace(/"/g,'""')+'"'};return["Referência;Data;Cliente;Telefone;Email;Entrega;Pagamento;Estado;Total (MT);Itens"].concat(ORD.map(function(o){return[o.ref,fd(o.at),o.cn,o.cp,o.ce,o.dl==="del"?"Entrega: "+o.a:"Levantamento",(PM[o.pm]||"")+" (aceite automaticamente)",o.st,o.total,o.items.map(function(x){return x.q+"x "+x.n+(x.sz?" ("+x.sz+")":"")}).join(" | ")].map(q).join(";")})).join("\r\n")}
+document.addEventListener("click",function(e){var logout=e.target.closest('[data-logout]');if(logout){request('/api/logout',{method:'POST'}).then(function(){IS_ADM=false;ROLE=null;ORD=[];BKG=[];MSG=[];admRender(true)});return}var t=e.target.closest("[data-ex],[data-mr]");if(!t)return;
+if(t.hasAttribute("data-ex")){var blob=new Blob(["\ufeff"+csv()],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="compras-indoor-padel-zone.csv";document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1000)}
+else{var a=t.getAttribute("data-mr").split("|");updItem("messages",a[0],a[1],{rd:true})}});
+document.addEventListener("input",function(e){if(e.target.id==="aq"){AQ=e.target.value.trim().toLowerCase();admContent()}});
+document.addEventListener("change",function(e){var t=e.target,a;
+if(t.hasAttribute&&t.hasAttribute("data-os")){a=t.getAttribute("data-os").split("|");var o=ORD.filter(function(x){return x.ref===a[1]})[0];updItem("orders",a[0],a[1],{st:t.value}).catch(function(err){toast(err.message)})}
+
+else if(t.hasAttribute&&t.hasAttribute("data-bs")){a=t.getAttribute("data-bs").split("|");updItem("bookings",a[0],a[1],{st:t.value})}
+else if(ROLE==="admin"&&t.hasAttribute&&t.hasAttribute("data-pf")){a=t.getAttribute("data-pf").split("|");var p=gp(a[0]),ref=DB.collection("products").doc(a[0]);ref.get().then(function(s){var b=s.exists?s.data():{p:p.p,s:p.s,pub:p.pub!==false},v=a[1]==="pub"?t.checked:Math.max(0,+t.value||0);b=Object.assign({},b);b[a[1]]=v;return ref.set(b)})}});
+document.addEventListener("submit",function(e){if(e.target.id==='admin-login'){e.preventDefault();loginAdmin($('#admin-email').value,$('#admin-pass').value).catch(function(er){$('#login-error').textContent=er.message});return}if(e.target.id!=="npf"||ROLE!=="admin")return;e.preventDefault();var id="x"+Date.now().toString(36);DB.collection("products").doc(id).set({custom:true,n:$("#np1").value.trim(),c:+$("#np2").value,p:Math.max(0,+$("#np3").value||0),s:Math.max(0,+$("#np4").value||0),pub:true}).then(function(){toast("Produto adicionado")})});
+function saveBooking(n,p){var d=D[st.day],iso=d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2),b={ref:"RES-"+Date.now().toString(36).toUpperCase().slice(-6),at:nowIso(),court:C[st.court],date:iso,time:T[st.time],cn:n,cp:p,st:"Pendente"};
+pushList("bookings",Object.assign({},b)).then(function(ok){b.sync=ok;if(st.bk===b&&st.s===4)bk()});return b}
+
+document.addEventListener("click",function(e){var t=e.target.closest("[data-add],[data-c],[data-clr],[data-th],[data-sz],[data-q],[data-addp],[data-buy],[data-cq],[data-rm]");if(!t)return;
+if(t.hasAttribute("data-add"))add(t.getAttribute("data-add"),null,1);
+else if(t.hasAttribute("data-c")){F.c=+t.getAttribute("data-c");cats();list()}
+else if(t.hasAttribute("data-clr")){F={c:-1,q:"",o:"f"};$("#sq").value="";$("#so").value="f";cats();list()}
+else if(t.hasAttribute("data-th")){ps.v=+t.getAttribute("data-th");drawP()}
+else if(t.hasAttribute("data-sz")){ps.sz=t.getAttribute("data-sz");drawP()}
+else if(t.hasAttribute("data-q")){var p=gp(ps.id);ps.q=Math.max(1,Math.min(p.s,ps.q+ +t.getAttribute("data-q")));drawP()}
+else if(t.hasAttribute("data-addp")){if(add(ps.id,ps.sz,ps.q))drawP()}
+else if(t.hasAttribute("data-buy")){if(add(ps.id,ps.sz,ps.q))location.hash="#checkout"}
+else if(t.hasAttribute("data-cq")){var a=t.getAttribute("data-cq").split(":"),l=cart[+a[0]],pp=gp(l.id),n=0;cart.forEach(function(x){if(x.id===l.id)n+=x.q});var d=+a[1];if(d>0&&n+d>pp.s){toast("Só existem "+pp.s+" unidades em stock.");return}l.q+=d;if(l.q<1)cart.splice(+a[0],1);cc();cartView()}
+else if(t.hasAttribute("data-rm")){cart.splice(+t.getAttribute("data-rm"),1);cc();cartView()}});
+document.addEventListener("input",function(e){if(e.target.id==="sq"){F.q=e.target.value.trim().toLowerCase();list()}});
+document.addEventListener("change",function(e){var t=e.target;if(t.id==="so"){F.o=t.value;list()}
+if(t.name==="dl")$("#ad").style.display=t.value==="del"?"block":"none";
+if(t.name==="pm"){$("#wl").style.display="none";$("#cdn").style.display="block"}});
+document.addEventListener("submit",function(e){if(e.target.id!=="ckf")return;e.preventDefault();var v=function(i){return $("#"+i).value.trim()},er="",dl=document.querySelector("[name=dl]:checked").value,pmr=document.querySelector("[name=pm]:checked"),pm=pmr&&pmr.value,w=v("cw").replace(/\s|^\+?258/g,"");
+if(!v("cn"))er="Indica o teu nome.";else if(v("cp").replace(/\D/g,"").length<9)er="Indica um telefone válido.";else if(!/^\S+@\S+\.\S+$/.test(v("ce")))er="Indica um email válido.";else if(dl==="del"&&!v("ca"))er="Indica o endereço de entrega.";else if(!pm)er="Escolhe um método de pagamento.";
+
+$("#cer").textContent=er;if(er)return;
+e.target.querySelector("button[type=submit]").disabled=true;ord={ref:"PED-"+Date.now().toString(36).toUpperCase().slice(-6),at:nowIso(),cn:v("cn"),cp:v("cp"),ce:v("ce"),co:v("co"),pm:pm,w:w,dl:dl,a:v("ca"),total:tot(),pay:"Pago",payAuto:true,st:"Por processar",ap:false,items:cart.map(function(l){var p=gp(l.id);return{id:l.id,n:p.n,sz:l.sz,q:l.q,u:p.p,t:p.p*l.q}})};var o2=ord;pushList("orders",Object.assign({},o2)).then(function(ok){o2.sync=ok;if(ok){cart=[];cc();}if(location.hash==="#pedido"&&ord===o2)od()});location.hash="#pedido"});
+function hf(){$("#hf").innerHTML=PR.filter(function(p){return p.s>0&&p.pub!==false}).slice(0,4).map(card).join("")}
+cats();list();hf();cc();
+$("#cf").onsubmit=function(e){e.preventDefault();var ok=1;[["n","en","Indica o teu nome."],["m","em","Escreve uma mensagem."]].forEach(function(f){var b=!$("#"+f[0]).value.trim();$("#"+f[1]).textContent=b?f[2]:"";if(b)ok=0});
+var b=!/^\S+@\S+\.\S+$/.test($("#e").value);$("#ee").textContent=b?"Indica um email válido.":"";if(b)ok=0;
+if(ok){var mg={ref:"MSG-"+Date.now().toString(36).toUpperCase().slice(-6),at:nowIso(),n:$("#n").value.trim(),e:$("#e").value.trim(),m:$("#m").value.trim(),rd:false};$("#cm").textContent="A enviar…";pushList("messages",mg).then(function(o){$("#cm").textContent=o?"Mensagem enviada. Respondemos em breve.":"Não foi possível enviar. Verifica a ligação e tenta novamente.";if(o)$("#cf").reset()})}};
+r();initData();})();

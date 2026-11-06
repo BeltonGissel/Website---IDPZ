@@ -1,0 +1,9 @@
+{
+  "name": "indoor-padel-zone-online",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Website, loja, reservas e painel da Indoor Padel Zone com PostgreSQL",
+  "engines": {"node": ">=20"},
+  "scripts": {"start": "node server.js", "check": "node --check server.js && node --check script.js"},
+  "dependencies": {"pg": "^8.13.0"}
+}

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "raq1",
+    "c": 0,
+    "t": "racket",
+    "col": "#1673B8",
+    "n": "Raquete Controlo Carbono",
+    "p": 9500,
+    "s": 8
+  },
+  {
+    "id": "raq2",
+    "c": 0,
+    "t": "racket",
+    "col": "#0d3d6b",
+    "n": "Raquete Potência Diamante",
+    "p": 6800,
+    "s": 5
+  },
+  {
+    "id": "sap1",
+    "c": 1,
+    "t": "shoe",
+    "col": "#1673B8",
+    "n": "Sapatilhas de Padel Aderência",
+    "p": 5200,
+    "s": 10
+  },
+  {
+    "id": "sap2",
+    "c": 1,
+    "t": "shoe",
+    "col": "#101E29",
+    "n": "Sapatilhas Indoor Leves",
+    "p": 4600,
+    "s": 3
+  },
+  {
+    "id": "ves1",
+    "c": 2,
+    "t": "shirt",
+    "col": "#CFF902",
+    "n": "T-shirt Técnica Respirável",
+    "p": 1400,
+    "s": 20
+  },
+  {
+    "id": "ves2",
+    "c": 2,
+    "t": "shirt",
+    "col": "#1673B8",
+    "n": "Camisola de Manga Comprida",
+    "p": 2100,
+    "s": 6
+  },
+  {
+    "id": "bol1",
+    "c": 3,
+    "t": "ball",
+    "col": "#CFF902",
+    "n": "Tubo de 3 Bolas de Padel",
+    "p": 450,
+    "s": 40
+  },
+  {
+    "id": "bol2",
+    "c": 3,
+    "t": "ball",
+    "col": "#CFF902",
+    "n": "Cesto de 24 Bolas de Treino",
+    "p": 4200,
+    "s": 4
+  },
+  {
+    "id": "mo1",
+    "c": 4,
+    "t": "bag",
+    "col": "#101E29",
+    "n": "Mochila de Padel",
+    "p": 2800,
+    "s": 7
+  },
+  {
+    "id": "mo2",
+    "c": 4,
+    "t": "bag",
+    "col": "#1673B8",
+    "n": "Saco para Raquetes",
+    "p": 1900,
+    "s": 2
+  },
+  {
+    "id": "ac1",
+    "c": 5,
+    "t": "grip",
+    "col": "#1673B8",
+    "n": "Overgrips (pack de 3)",
+    "p": 300,
+    "s": 60
+  },
+  {
+    "id": "ac2",
+    "c": 5,
+    "t": "grip",
+    "col": "#101E29",
+    "n": "Munhequeiras (par)",
+    "p": 250,
+    "s": 0
+  }
+]
