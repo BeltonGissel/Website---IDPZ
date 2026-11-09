@@ -1,0 +1,28 @@
+/* Indoor Padel Zone | motion system | scoped to public pages, never admin */
+body:not(.adm) { --ipz-scroll: 0; }
+body:not(.adm) .ipz-scroll-progress { position:fixed;left:0;top:0;width:100%;height:3px;z-index:999;pointer-events:none;background:transparent; }
+body:not(.adm) .ipz-scroll-progress>span {display:block;height:100%;background:#cff902;transform:scaleX(var(--ipz-scroll));transform-origin:left;will-change:transform;box-shadow:0 0 12px #cff90280}
+/* Reveal only after animation engine initialises. No animation hides the content without JS. */
+body.ipz-motion-ready:not(.adm) .ipz-reveal:not(.ipz-inview) {opacity:0;transform:translate3d(0,36px,0);filter:blur(5px)}
+body.ipz-motion-ready:not(.adm) .ipz-reveal {transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .9s cubic-bezier(.2,.7,.2,1),filter .85s ease;transition-delay:var(--ipz-delay,0ms)}
+body.ipz-motion-ready:not(.adm) .ipz-reveal.ipz-inview {opacity:1;transform:translate3d(0,0,0);filter:blur(0)}
+body:not(.adm) .ipz-hero .hero-triad h1 {transition:transform .18s linear;transform:translate3d(0,var(--ipz-hero-lift,0px),0)}
+body:not(.adm) .scene-photo,body:not(.adm) .scene-court,body:not(.adm) .scene-balls,body:not(.adm) .scene-player-one,body:not(.adm) .scene-player-two {background-position:center calc(50% + var(--ipz-parallax,0px));}
+body:not(.adm) .ipz-story-scroll {height:225vh;position:relative;padding:0!important;margin:45px 0 75px}
+body:not(.adm) .ipz-story-sticky {position:sticky;top:90px;height:calc(100svh - 105px);min-height:530px;max-height:850px;border-radius:22px;overflow:hidden;isolation:isolate;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(22px,4vw,55px);color:white;background-color:#142a2c;background-image:linear-gradient(95deg,#031216ed,#03121645),url('./court.svg');background-size:cover;background-position:center calc(50% + var(--ipz-story-parallax,0px));box-shadow:0 40px 80px #0002}
+body:not(.adm) .ipz-story-sticky:after {content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,transparent 70%,#0009);z-index:-1}
+body:not(.adm) .ipz-story-top,body:not(.adm) .ipz-story-bottom {display:flex;align-items:center;justify-content:space-between;gap:16px;z-index:1}
+body:not(.adm) .ipz-story-counter {font-size:.8rem;font-weight:800;letter-spacing:.18em;color:#cff902}
+body:not(.adm) .ipz-story-copy {position:relative;min-height:300px;display:grid;align-items:center;z-index:1}
+body:not(.adm) .ipz-story-panel {grid-area:1/1;opacity:0;visibility:hidden;transform:translateY(22px);transition:opacity .48s,transform .55s,visibility .55s;pointer-events:none;max-width:800px}
+body:not(.adm) .ipz-story-panel.is-active {opacity:1;visibility:visible;transform:translateY(0);pointer-events:auto}
+body:not(.adm) .ipz-story-panel h2 {font-size:clamp(3.2rem,8vw,8rem);line-height:.92;letter-spacing:-.07em;margin:14px 0}
+body:not(.adm) .ipz-story-panel h2 em {color:#cff902}
+body:not(.adm) .ipz-story-kicker {font-size:.75rem;font-weight:800;letter-spacing:.17em;color:#d6f29d}
+body:not(.adm) .ipz-story-panel p {max-width:460px;font-size:clamp(.88rem,1.25vw,1.1rem);line-height:1.7;color:#f0f7f0}
+body:not(.adm) .ipz-story-track {width:min(270px,40%);height:3px;background:#ffffff60;border-radius:5px;overflow:hidden}
+body:not(.adm) .ipz-story-fill {display:block;background:#cff902;width:100%;height:100%;transform-origin:left;transform:scaleX(var(--ipz-story-progress,0));will-change:transform}
+body:not(.adm) .experience-card,.ipz-hero .hero-reserve,body:not(.adm) .glass-button {transition:transform .35s ease,box-shadow .35s ease,background .35s ease}
+@media (hover:hover) and (pointer:fine){body:not(.adm) .experience-card:hover {transform:translateY(-7px) scale(1.015);box-shadow:0 22px 40px #0004}body:not(.adm) .glass-button:hover,body:not(.adm) .hero-reserve:hover {transform:translateY(-4px);box-shadow:0 14px 28px #0004}}
+@media(max-width:640px){body:not(.adm) .ipz-story-scroll{height:190vh;margin:20px 0 50px}body:not(.adm) .ipz-story-sticky{top:78px;height:calc(100svh - 90px);min-height:460px;padding:24px 18px}body:not(.adm) .ipz-story-panel h2{font-size:clamp(2.7rem,13vw,4.8rem)}body:not(.adm) .ipz-story-bottom{align-items:flex-start;flex-direction:column}body:not(.adm) .ipz-story-track{width:100%}}
+@media(prefers-reduced-motion:reduce){body.ipz-motion-ready:not(.adm) .ipz-reveal,body.ipz-motion-ready:not(.adm) .ipz-reveal:not(.ipz-inview){opacity:1!important;filter:none!important;transform:none!important;transition:none!important}body:not(.adm) .ipz-story-panel {transition:none!important}body:not(.adm) .scene-photo,body:not(.adm) .scene-court,body:not(.adm) .scene-balls {background-position:center!important}}
