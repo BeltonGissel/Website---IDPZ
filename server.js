@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const {Pool} = require('pg');
+const ExcelJS = require('exceljs');
 
 const ROOT = __dirname;
 const PORT = Number(process.env.PORT || 3000);
@@ -37,7 +38,7 @@ function error(res,code,message){json(res,code,{error:message});}
 function setCookie(token,clear=false){return `ipz_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${clear?0:28800}${PROD||process.env.COOKIE_SECURE==='1'?'; Secure':''}`;}
 function cookies(req){return (req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('ipz_session='))?.slice(12)||'';}
 function sameOrigin(req){const o=req.headers.origin;if(!o)return true;try{return new URL(o).host===req.headers.host}catch{return false;}}
-function parse(req){return new Promise((resolve,reject)=>{let data='',ended=false;req.on('data',b=>{data+=b;if(data.length>80000&&!ended){ended=true;reject(Object.assign(new Error('Corpo demasiado grande'),{status:413}));req.destroy();}});req.on('end',()=>{if(ended)return;try{resolve(JSON.parse(data||'{}'))}catch{reject(Object.assign(new Error('JSON inválido'),{status:400}))}});req.on('error',reject);});}
+function parse(req,maxBytes=80000){return new Promise((resolve,reject)=>{let data='',ended=false;req.on('data',b=>{data+=b;if(Buffer.byteLength(data,'utf8')>maxBytes&&!ended){ended=true;reject(Object.assign(new Error('Corpo demasiado grande'),{status:413}));req.destroy();}});req.on('end',()=>{if(ended)return;try{resolve(JSON.parse(data||'{}'))}catch{reject(Object.assign(new Error('JSON inválido'),{status:400}))}});req.on('error',reject);});}
 async function session(req){const raw=cookies(req);if(!/^[a-f0-9]{64}$/.test(raw))return null;
  const key=crypto.createHash('sha256').update(raw).digest('hex');
  const q=await pool.query('SELECT role,email FROM ipz_sessions WHERE token_hash=$1 AND expires_at>now()',[key]);return q.rows[0]||null;}
@@ -50,11 +51,15 @@ async function boot(){
  CREATE TABLE IF NOT EXISTS ipz_sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, role TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);`);
  for(const p of catalog)await pool.query('INSERT INTO ipz_products(id,data) VALUES($1,$2::jsonb) ON CONFLICT(id) DO NOTHING',[p.id,JSON.stringify({...p,pub:true})]);
 }
+function publicProduct(item){
+ const images=Array.isArray(item.images)?item.images:[];
+ return {...item,images:images.map((data,i)=>'/api/product-image/'+encodeURIComponent(item.id)+'/'+i+'?v='+crypto.createHash('sha256').update(data).digest('hex').slice(0,12))};
+}
 const recordTables={orders:'ipz_orders',bookings:'ipz_bookings',messages:'ipz_messages',products:'ipz_products'};
 async function snapshot(c){const q=await pool.query(`SELECT ${c==='products'?'id':'ref'} AS id, data FROM ${recordTables[c]} ORDER BY ${c==='products'?'id':'created_at DESC'} LIMIT 2000`);
- if(c==='products')return q.rows.map(x=>({id:x.id,data:x.data}));
+ if(c==='products')return q.rows.map(x=>({id:x.id,data:publicProduct(x.data)}));
  return [{id:'local',data:{list:q.rows.map(x=>x.data)}}];}
-async function getDoc(c,id){if(c==='products'){let r=await pool.query('SELECT data FROM ipz_products WHERE id=$1',[id]);return r.rows[0]?.data||null;}
+async function getDoc(c,id){if(c==='products'){let r=await pool.query('SELECT data FROM ipz_products WHERE id=$1',[id]);return r.rows[0]?publicProduct(r.rows[0].data):null;}
  if(id!=='local')return null;
  const docs=await snapshot(c);return docs[0].data;}
 async function tx(fn){const c=await pool.connect();try{await c.query('BEGIN');const out=await fn(c);await c.query('COMMIT');return out;}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
@@ -115,8 +120,66 @@ async function saveProduct(id,v){if(!/^[a-zA-Z0-9_-]{2,60}$/.test(id))bad('ID in
  if(!current&&v.custom!==true)bad('Produto inexistente');
  const n=cut(v.n||current?.n,150),p=Number(v.p),s=Number(v.s),c=Number(v.c??current?.c??0);
  if(!n||!Number.isFinite(p)||p<0||!Number.isInteger(s)||s<0||!Number.isInteger(c)||c<0||c>5)bad('Dados do produto inválidos');
- const item={...(current||{}),custom:current?.custom||v.custom===true,n,p,s,c,pub:v.pub!==false,id,t:current?.t||['racket','shoe','shirt','ball','bag','grip'][c],col:current?.col||'#1673B8'};
+ let images=current?.images||[];
+ if(Object.prototype.hasOwnProperty.call(v,'images')){
+  if(!Array.isArray(v.images))bad('Formato de imagens inválido');
+  if(current&&v.images.length===0&&(!current.images||current.images.length===0))images=[];
+  else {
+  if(v.images.length!==4)bad('Selecciona exactamente 4 imagens do produto');
+  const unchanged=current&&v.images.every((source,i)=>typeof source==='string'&&source.startsWith('/api/product-image/'+id+'/'+i+'?v='));
+  if(unchanged)images=current.images||[];
+  else images=v.images.map((source,i)=>{
+   if(typeof source!=='string'||!/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(source))bad('Formato de imagem inválido na posição '+(i+1));
+   const data=source.slice(source.indexOf(',')+1);
+   if(Buffer.byteLength(data,'base64')>180*1024)bad('Imagem '+(i+1)+' excede 180 KB. Tenta novamente com imagens menores.');
+   return source;
+  });
+  }
+ }
+ if(!current&&images.length!==4)bad('Os produtos novos precisam de exactamente 4 imagens');
+ const item={...(current||{}),custom:current?.custom||v.custom===true,n,p,s,c,pub:v.pub!==false,id,t:current?.t||['racket','shoe','shirt','ball','bag','grip'][c],col:current?.col||'#1673B8',images};
  await pool.query('INSERT INTO ipz_products(id,data) VALUES($1,$2::jsonb) ON CONFLICT(id) DO UPDATE SET data=excluded.data',[id,JSON.stringify(item)]);}
+
+
+async function excel45Days(res){
+ const until=new Date(), start=new Date(until.getTime()-45*86400000);
+ const [orders,bookings,messages,products]=await Promise.all([
+  pool.query('SELECT data FROM ipz_orders WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',[start,until]),
+  pool.query('SELECT data FROM ipz_bookings WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',[start,until]),
+  pool.query('SELECT data FROM ipz_messages WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',[start,until]),
+  pool.query('SELECT data FROM ipz_products ORDER BY id')
+ ]);
+ const O=orders.rows.map(r=>r.data), B=bookings.rows.map(r=>r.data), M=messages.rows.map(r=>r.data), P=products.rows.map(r=>r.data);
+ const active=O.filter(x=>x.st!=='Cancelado');const revenue=active.reduce((n,x)=>n+Number(x.total||0),0);
+ const wb=new ExcelJS.Workbook();wb.creator='Indoor Padel Zone';wb.created=until;
+ wb.properties.date1904=false;
+ const green='CFF902', dark='10232B';
+ function sheet(name,headers,rows,widths){const ws=wb.addWorksheet(name,{views:[{state:'frozen',ySplit:2}]});
+  ws.mergeCells(1,1,1,headers.length);const title=ws.getCell(1,1);title.value='INDOOR PADEL ZONE | '+name.toUpperCase();title.font={bold:true,size:15,color:{argb:'FFFFFFFF'}};title.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+dark}};title.alignment={vertical:'middle'};ws.getRow(1).height=32;
+  ws.addRow(headers);ws.getRow(2).eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF'+green}};c.font={bold:true,color:{argb:'FF'+dark}};c.alignment={vertical:'middle'}});ws.getRow(2).height=26;
+  for(const row of rows)ws.addRow(row);
+  (widths||headers.map(()=>22)).forEach((w,i)=>ws.getColumn(i+1).width=w);
+  for(let i=3;i<=ws.rowCount;i++){const r=ws.getRow(i);if(i%2===0)r.eachCell(c=>c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F7F6'}});r.height=21;}
+  ws.autoFilter={from:{row:2,column:1},to:{row:Math.max(2,ws.rowCount),column:headers.length}};
+  ws.pageSetup={fitToPage:true,fitToWidth:1,fitToHeight:0,orientation:'landscape'};
+  return ws;
+ }
+ const period='De '+start.toISOString().slice(0,10)+' até '+until.toISOString().slice(0,10)+' (UTC)';
+ const stats=[['Período de análise',period],['Compras registadas',O.length],['Compras activas',active.length],['Compras canceladas',O.length-active.length],['Valor de encomendas não canceladas (MT)',revenue],['Pagamentos reais recebidos (MT)',0],['Reservas registadas',B.length],['Reservas pendentes',B.filter(x=>x.st==='Pendente').length],['Reservas confirmadas',B.filter(x=>x.st==='Confirmada').length],['Reservas canceladas',B.filter(x=>x.st==='Cancelada').length],['Mensagens recebidas',M.length],['Mensagens não lidas',M.filter(x=>!x.rd).length],['Produtos no catálogo (estado actual)',P.length],['Produtos publicados (estado actual)',P.filter(x=>x.pub!==false).length],['Produtos com stock baixo ≤ 3 (estado actual)',P.filter(x=>Number(x.s)<=3).length]];
+ const summary=sheet('Resumo',['Indicador','Valor'],stats,[51,73]);summary.getColumn(2).alignment={vertical:'middle',wrapText:true};
+ summary.getCell(7,2).numFmt='#,##0.00 "MT"';
+ const date=x=>x?new Date(x).toISOString().replace('T',' ').slice(0,16):'';
+ const so=sheet('Compras',['Referência','Criada em (UTC)','Cliente','Telefone','Email','Estado','Pagamento','Método','Entrega','Endereço','Total MT','Itens'],O.map(x=>[x.ref,date(x.at),x.cn,x.cp,x.ce,x.st,x.pay,x.pm,x.dl,x.a,Number(x.total)||0,(x.items||[]).map(i=>`${i.q}x ${i.n}${i.sz?' ['+i.sz+']':''}`).join('; ')]),[22,22,26,18,30,20,22,14,16,32,17,65]);so.getColumn(11).numFmt='#,##0.00 "MT"';
+ sheet('Reservas',['Referência','Criada em (UTC)','Campo','Data reservada','Hora','Cliente','Telefone','Estado'],B.map(x=>[x.ref,date(x.at),x.court,x.date,x.time,x.cn,x.cp,x.st]),[24,23,18,20,13,28,18,18]);
+ sheet('Mensagens',['Referência','Criada em (UTC)','Nome','Email','Mensagem','Lida'],M.map(x=>[x.ref,date(x.at),x.n,x.e,x.m,x.rd?'Sim':'Não']),[24,23,28,35,70,14]);
+ const sp=sheet('Produtos',['ID','Nome','Categoria','Preço MT','Stock','Publicado','Imagens'],P.map(x=>[x.id,x.n,['Raquetes','Sapatilhas','Vestuário','Bolas','Mochilas e Sacos','Acessórios'][x.c]||'',Number(x.p)||0,Number(x.s)||0,x.pub!==false?'Sim':'Não',(x.images||[]).length]),[22,47,26,20,16,16,15]);sp.getColumn(4).numFmt='#,##0.00 "MT"';
+ const days=new Map();for(let i=44;i>=0;i--){const d=new Date(Date.UTC(until.getUTCFullYear(),until.getUTCMonth(),until.getUTCDate()-i));days.set(d.toISOString().slice(0,10),{orders:0,bookings:0,messages:0,revenue:0})}
+ for(const o of O){const d=String(o.at).slice(0,10),v=days.get(d);if(v){v.orders++;if(o.st!=='Cancelado')v.revenue+=Number(o.total)||0}}
+ for(const b of B){const v=days.get(String(b.at).slice(0,10));if(v)v.bookings++}
+ for(const m of M){const v=days.get(String(m.at).slice(0,10));if(v)v.messages++}
+ const daily=sheet('Evolução diária',['Data (UTC)','Compras','Reservas','Mensagens','Valor não cancelado MT'],[...days].map(([d,v])=>[d,v.orders,v.bookings,v.messages,v.revenue]),[22,19,19,19,30]);daily.getColumn(5).numFmt='#,##0.00 "MT"';
+ const buffer=await wb.xlsx.writeBuffer();res.writeHead(200,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="IDPZ-relatorio-45-dias-${until.toISOString().slice(0,10)}.xlsx"`,'Cache-Control':'no-store','Content-Length':buffer.length,'X-Content-Type-Options':'nosniff'});res.end(Buffer.from(buffer));
+}
 
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon'};
 async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.pathname,m=req.method;
@@ -140,6 +203,14 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    return json(res,200,{admin:true,role:acc.role,email},{'Set-Cookie':setCookie(token)});
   }
   if(r==='/api/logout'&&m==='POST'){const token=cookies(req);if(token)await pool.query('DELETE FROM ipz_sessions WHERE token_hash=$1',[crypto.createHash('sha256').update(token).digest('hex')]);return json(res,200,{ok:true},{'Set-Cookie':setCookie('',true)});}
+  const photoRoute=r.match(/^\/api\/product-image\/([a-zA-Z0-9_-]+)\/([0-3])$/);
+  if(photoRoute&&m==='GET'){
+   const q=await pool.query(`SELECT data->'images'->>$2::int AS img FROM ipz_products WHERE id=$1`,[photoRoute[1],Number(photoRoute[2])]);
+   const uri=q.rows[0]?.img;
+   if(!uri||!/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(uri))return error(res,404,'Imagem indisponível');
+   const type=uri.slice(5,uri.indexOf(';')),bytes=Buffer.from(uri.slice(uri.indexOf(',')+1),'base64');
+   res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'public,max-age=31536000,immutable','X-Content-Type-Options':'nosniff'});return res.end(bytes);
+  }
   if(r==='/api/snapshot/products'&&m==='GET')return json(res,200,{docs:await snapshot('products')});
   if(r.startsWith('/api/submit/')&&m==='POST'){
    const c=r.split('/').pop(),b=await parse(req);let item;
@@ -147,6 +218,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    return json(res,201,{ok:true,item});
   }
   const s=await session(req);if(!s)return error(res,401,'Inicia sessão para aceder ao painel');
+  if(r==='/api/admin/export-45-days'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode exportar o relatório');return excel45Days(res);}
   const sm=r.match(/^\/api\/snapshot\/(orders|bookings|messages|products)$/);
   if(sm&&m==='GET')return json(res,200,{docs:await snapshot(sm[1])});
   const itemRoute=r.match(/^\/api\/item\/(orders|bookings|messages)\/([A-Za-z0-9_-]+)$/);
@@ -159,7 +231,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(doc){const [,c,id]=doc;
    if(m==='GET'){if(c==='products'&&s.role!=='admin')return error(res,403,'Acesso restrito');let data=await getDoc(c,id);return json(res,200,{exists:!!data,data});}
    if(m==='PUT'){
-    if(c==='products'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode editar produtos');await saveProduct(id,await parse(req));}
+    if(c==='products'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode editar produtos');await saveProduct(id,await parse(req,1100000));}
     else {if(id!=='local')return error(res,400,'Identificador inválido');await modifyRecord(c,await parse(req));}
     return json(res,200,{ok:true});
    }
@@ -168,7 +240,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  }
  if(m!=='GET'&&m!=='HEAD')return error(res,405,'Método não permitido');
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
- if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
+ if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','admin-enhancements.css','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
   res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':file.endsWith('.html')?'no-cache':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
