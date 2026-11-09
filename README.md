@@ -113,3 +113,25 @@ indoor-padel-zone-publico/
 ├── .gitignore
 └── README.md
 ```
+
+
+## Redesign visual — 2026
+
+- Nova home editorial inspirada na referência: Motion / Discipline / Result, secção de energia, cartões de experiência, destaque de campos e produtos.
+- Novas páginas Sobre, Reservas, Loja e Contactos com cabeçalhos editoriais.
+- Efeito Liquid Glass em navegação, call-to-actions e painéis visuais.
+- Tema claro e escuro automático com `prefers-color-scheme`. Sem preferência manual gravada.
+- O painel Admin / Recepcionista mantém o design e código existentes.
+- A folha `redesign.css` é carregada depois de `styles.css`; mantém ambas.
+- Texturas SVG `padel-balls.svg` e `court.svg` guardadas directamente na raiz do projecto. Algumas fotografias editoriais são obtidas através do Unsplash quando o dispositivo está online; as cores e SVGs funcionam como fallback. Substitui as imagens por fotografias próprias licenciadas antes do lançamento comercial.
+- Os fluxos e rotas de compra, reservas e PostgreSQL permanecem os do projecto recebido.
+- Para actualizar o Render, substitui os ficheiros do repositório na raiz e confirma que o Root Directory está vazio. Não publiques variáveis secretas.
+
+
+## Organização dos ficheiros visuais (sem subpastas)
+
+Todos os ficheiros fornecidos estão directamente na raiz do repositório, incluindo `padel-balls.svg` e `court.svg`. O ficheiro `redesign.css` utiliza `url('./padel-balls.svg')` e `url('./court.svg')`, com caminhos relativos a esse CSS. Não existe pasta `assets/`.
+
+**Fotografias editoriais:** as quatro fotos da página inicial utilizam URLs HTTPS do Unsplash, porque não foram fornecidas como ficheiros locais na versão anterior. Necessitam de ligação à Internet e não estão incluídas no ZIP. Para torná-las independentes, descarrega fotografias com licença adequada, guarda-as na raiz e substitui cada URL externa no `redesign.css` pelo nome do ficheiro correspondente.
+
+**GitHub / Render:** carrega o conteúdo desta pasta directamente na raiz do repositório `Website---IDPZ`. Mantém `Root Directory` vazio no Render. Confirma que `redesign.css`, `padel-balls.svg` e `court.svg` são enviados juntamente com o resto do projecto.
