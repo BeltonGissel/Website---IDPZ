@@ -1,3 +1,28 @@
+# Actualização V4: categorias oficiais da loja
+
+A loja e o painel Admin utilizam as 10 categorias na ordem exacta da referência:
+
+1. Raquetes
+2. Sapatilhas
+3. Roupa
+4. Sacos
+5. Packs
+6. Bolas
+7. Acessórios
+8. Outlet
+9. Pickleball
+10. Outras raquetes
+
+O painel permite escolher qualquer destas categorias ao adicionar produtos e alterar a categoria de um artigo existente na tabela Produtos. A loja apresenta todas as categorias, mesmo quando ainda estão vazias.
+
+**Migração Neon:** no próximo arranque, o servidor converte automaticamente os índices antigos da base de dados (`Vestuário` → `Roupa`; `Mochilas e Sacos` → `Sacos`; `Bolas` → `Bolas`, etc.). A migração é executada apenas uma vez por produto e não altera imagens, preços, stock ou pedidos históricos. Produtos anteriores sem marcador `categoryVersion` são migrados; produtos novos recebem `categoryVersion: 2`.
+
+**Ficheiros alterados:** `script.js`, `server.js`, `catalog.json`, `README.md`.
+
+**Actualização GitHub:** substitui estes quatro ficheiros na raiz do repositório e faz commit. O Render deverá fazer redeploy. Mantém as variáveis de ambiente existentes e a ligação ao Neon. Faz backup da base de dados antes de fazer deploy, pois a classificação dos produtos é actualizada na base.
+
+---
+
 # Indoor Padel Zone — Admin v3
 
 ## Actualização
