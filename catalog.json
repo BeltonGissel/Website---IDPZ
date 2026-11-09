@@ -6,7 +6,8 @@
     "col": "#1673B8",
     "n": "Raquete Controlo Carbono",
     "p": 9500,
-    "s": 8
+    "s": 8,
+    "categoryVersion": 2
   },
   {
     "id": "raq2",
@@ -15,7 +16,8 @@
     "col": "#0d3d6b",
     "n": "Raquete Potência Diamante",
     "p": 6800,
-    "s": 5
+    "s": 5,
+    "categoryVersion": 2
   },
   {
     "id": "sap1",
@@ -24,7 +26,8 @@
     "col": "#1673B8",
     "n": "Sapatilhas de Padel Aderência",
     "p": 5200,
-    "s": 10
+    "s": 10,
+    "categoryVersion": 2
   },
   {
     "id": "sap2",
@@ -33,7 +36,8 @@
     "col": "#101E29",
     "n": "Sapatilhas Indoor Leves",
     "p": 4600,
-    "s": 3
+    "s": 3,
+    "categoryVersion": 2
   },
   {
     "id": "ves1",
@@ -42,7 +46,8 @@
     "col": "#CFF902",
     "n": "T-shirt Técnica Respirável",
     "p": 1400,
-    "s": 20
+    "s": 20,
+    "categoryVersion": 2
   },
   {
     "id": "ves2",
@@ -51,60 +56,67 @@
     "col": "#1673B8",
     "n": "Camisola de Manga Comprida",
     "p": 2100,
-    "s": 6
+    "s": 6,
+    "categoryVersion": 2
   },
   {
     "id": "bol1",
-    "c": 3,
+    "c": 5,
     "t": "ball",
     "col": "#CFF902",
     "n": "Tubo de 3 Bolas de Padel",
     "p": 450,
-    "s": 40
+    "s": 40,
+    "categoryVersion": 2
   },
   {
     "id": "bol2",
-    "c": 3,
+    "c": 5,
     "t": "ball",
     "col": "#CFF902",
     "n": "Cesto de 24 Bolas de Treino",
     "p": 4200,
-    "s": 4
+    "s": 4,
+    "categoryVersion": 2
   },
   {
     "id": "mo1",
-    "c": 4,
+    "c": 3,
     "t": "bag",
     "col": "#101E29",
     "n": "Mochila de Padel",
     "p": 2800,
-    "s": 7
+    "s": 7,
+    "categoryVersion": 2
   },
   {
     "id": "mo2",
-    "c": 4,
+    "c": 3,
     "t": "bag",
     "col": "#1673B8",
     "n": "Saco para Raquetes",
     "p": 1900,
-    "s": 2
+    "s": 2,
+    "categoryVersion": 2
   },
   {
     "id": "ac1",
-    "c": 5,
+    "c": 6,
     "t": "grip",
     "col": "#1673B8",
     "n": "Overgrips (pack de 3)",
     "p": 300,
-    "s": 60
+    "s": 60,
+    "categoryVersion": 2
   },
   {
     "id": "ac2",
-    "c": 5,
+    "c": 6,
     "t": "grip",
     "col": "#101E29",
     "n": "Munhequeiras (par)",
     "p": 250,
-    "s": 0
+    "s": 0,
+    "categoryVersion": 2
   }
 ]
