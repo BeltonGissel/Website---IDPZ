@@ -1,3 +1,16 @@
+# Indoor Padel Zone — Admin v3
+
+## Actualização
+- **Excel completo de 45 dias**: botão no dashboard Admin e na área Compras. Download protegido em `/api/admin/export-45-days`, disponível só para Admin. O ficheiro XLSX inclui Resumo, Compras, Reservas, Mensagens, Produtos (estado actual) e Evolução diária. Filtro dos últimos 45 dias baseado na **data de criação** (UTC); o inventário é uma fotografia actual, não um histórico. O valor de encomendas é **simulado**, sem pagamentos reais.
+- **4 imagens por produto**: ao criar um produto, o Admin selecciona exactamente quatro fotografias. Em Produtos → Editar 4 fotos pode substituir as quatro. A primeira é a capa, as quatro surgem na galeria. A Recepcionista não pode alterar produtos. As fotografias são optimizadas pelo navegador para WebP e guardadas no Neon no campo JSONB do produto; não são guardadas no disco efémero do Render. O website recebe URLs de imagem leves (`/api/product-image/...`) em vez de descarregar as fotografias em cada actualização de stock.
+- **Limite:** cada fotografia optimizada ≤180 KB. Isto é adequado a um catálogo pequeno; para catálogo grande recomenda-se Cloudinary/R2/object storage. A utilização da base Neon aumenta com o número de produtos.
+
+## Deploy
+Enviar todos os ficheiros para a **raiz** do repositório GitHub, incluindo `admin-enhancements.css`, `package.json`, `server.js`, `script.js`, `index.html`, `animations.css`, `animations.js`, `redesign.css`, `styles.css` e SVGs. O Render deve usar Root Directory vazio, build `npm install`, start `npm start`, Node 20+. Manter `DATABASE_URL`, `NODE_ENV=production`, `COOKIE_SECURE=1`, `ADMIN_PASSWORD`, `RECEPTION_PASSWORD` (não enviar segredos ao GitHub). O comando `npm install` instalará `exceljs`.
+
+## Validação recomendada
+Criar produto com quatro imagens reais e confirmar que aparecem na loja e na página de produto, após reiniciar o Render. Exportar Excel como Admin e abrir as seis folhas no Excel/LibreOffice, confirmando que as encomendas não canceladas são apenas **valores simulados**. Confirmar que a Recepcionista recebe 403 em `/api/admin/export-45-days` e não tem acesso a criar ou editar produtos. Fazer backup da base Neon antes de utilizar com clientes.
+
 # Indoor Padel Zone — website + gestão online (v2)
 
 **Projecto único, dois acessos:** loja e reservas públicas em `/` e Admin/Recepcionista em `/admin.html`. O painel mantém o design original, a loja continua disponível e ambos usam a mesma base de dados PostgreSQL.
