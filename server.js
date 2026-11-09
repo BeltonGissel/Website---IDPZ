@@ -49,6 +49,16 @@ async function boot(){
  CREATE UNIQUE INDEX IF NOT EXISTS ipz_booking_slot_active ON ipz_bookings(court,booking_date,booking_time) WHERE status <> 'Cancelada';
  CREATE TABLE IF NOT EXISTS ipz_messages (ref TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS ipz_sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, role TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);`);
+ // Migração idempotente de categorias antigas (0-5) para o catálogo v2 (0-9).
+ // Só converte artigos sem categoryVersion; preserva preços, imagens, stock e vendas.
+ await pool.query(`UPDATE ipz_products
+ SET data = jsonb_set(
+   jsonb_set(data, '{c}', to_jsonb(CASE (data->>'c')::integer
+     WHEN 0 THEN 0 WHEN 1 THEN 1 WHEN 2 THEN 2 WHEN 3 THEN 5 WHEN 4 THEN 3 WHEN 5 THEN 6
+     ELSE 6 END)),
+   '{categoryVersion}', '2'::jsonb)
+ WHERE NOT (data ? 'categoryVersion')
+   AND (data->>'c') ~ '^[0-5]$'`);
  for(const p of catalog)await pool.query('INSERT INTO ipz_products(id,data) VALUES($1,$2::jsonb) ON CONFLICT(id) DO NOTHING',[p.id,JSON.stringify({...p,pub:true})]);
 }
 function publicProduct(item){
@@ -119,7 +129,7 @@ async function saveProduct(id,v){if(!/^[a-zA-Z0-9_-]{2,60}$/.test(id))bad('ID in
  const current=(await pool.query('SELECT data FROM ipz_products WHERE id=$1',[id])).rows[0]?.data;
  if(!current&&v.custom!==true)bad('Produto inexistente');
  const n=cut(v.n||current?.n,150),p=Number(v.p),s=Number(v.s),c=Number(v.c??current?.c??0);
- if(!n||!Number.isFinite(p)||p<0||!Number.isInteger(s)||s<0||!Number.isInteger(c)||c<0||c>5)bad('Dados do produto inválidos');
+ if(!n||!Number.isFinite(p)||p<0||!Number.isInteger(s)||s<0||!Number.isInteger(c)||c<0||c>9)bad('Dados do produto inválidos');
  let images=current?.images||[];
  if(Object.prototype.hasOwnProperty.call(v,'images')){
   if(!Array.isArray(v.images))bad('Formato de imagens inválido');
@@ -137,7 +147,7 @@ async function saveProduct(id,v){if(!/^[a-zA-Z0-9_-]{2,60}$/.test(id))bad('ID in
   }
  }
  if(!current&&images.length!==4)bad('Os produtos novos precisam de exactamente 4 imagens');
- const item={...(current||{}),custom:current?.custom||v.custom===true,n,p,s,c,pub:v.pub!==false,id,t:current?.t||['racket','shoe','shirt','ball','bag','grip'][c],col:current?.col||'#1673B8',images};
+ const item={...(current||{}),custom:current?.custom||v.custom===true,n,p,s,c,pub:v.pub!==false,id,categoryVersion:2,t:current?.t||['racket','shoe','shirt','bag','bag','ball','grip','racket','racket','racket'][c],col:current?.col||'#1673B8',images};
  await pool.query('INSERT INTO ipz_products(id,data) VALUES($1,$2::jsonb) ON CONFLICT(id) DO UPDATE SET data=excluded.data',[id,JSON.stringify(item)]);}
 
 
