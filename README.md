@@ -135,3 +135,20 @@ Todos os ficheiros fornecidos estão directamente na raiz do repositório, inclu
 **Fotografias editoriais:** as quatro fotos da página inicial utilizam URLs HTTPS do Unsplash, porque não foram fornecidas como ficheiros locais na versão anterior. Necessitam de ligação à Internet e não estão incluídas no ZIP. Para torná-las independentes, descarrega fotografias com licença adequada, guarda-as na raiz e substitui cada URL externa no `redesign.css` pelo nome do ficheiro correspondente.
 
 **GitHub / Render:** carrega o conteúdo desta pasta directamente na raiz do repositório `Website---IDPZ`. Mantém `Root Directory` vazio no Render. Confirma que `redesign.css`, `padel-balls.svg` e `court.svg` são enviados juntamente com o resto do projecto.
+
+## Correcção do carregamento visual (Novembro de 2026)
+O `server.js` autoriza explicitamente `redesign.css`, `court.svg` e `padel-balls.svg` como recursos públicos. Na versão anterior eram devolvidos com HTTP 404, impedindo o redesign de carregar. Depois de actualizar no GitHub, publicar no Render e actualizar a página com Cmd+Shift+R. Os restantes ficheiros da API e painel permanecem iguais. As fotografias de fundo usam URLs externas do Unsplash.
+
+
+## Animações editoriais (v3)
+
+Os ficheiros `animations.css` e `animations.js` estão na raiz. O `index.html` referencia ambos e o `server.js` autoriza a sua entrega. Não foram adicionadas dependências NPM.
+
+- Scroll trigger: revelação de secções e cartões ao entrar no ecrã (IntersectionObserver).
+- Scroll linked: barra de progresso e storytelling em três fases ligado ao scroll (requestAnimationFrame).
+- Parallax: movimento suave dos fundos sem alterar o conteúdo essencial.
+- Sticky: storytelling da homepage com mensagem que evolui durante a rolagem.
+- Microinteracções: hover subtil de cartões e botões.
+- Acessibilidade: respeita `prefers-reduced-motion`. Não interfere nos elementos do painel Admin/Recepcionista.
+
+**Para publicar:** substitui os ficheiros na raiz do GitHub, inclui `animations.css` e `animations.js`, e aguarda o redeploy no Render. Mantém `Root Directory` vazio.
