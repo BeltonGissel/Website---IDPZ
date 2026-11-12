@@ -1,0 +1,18 @@
+/* Comunidade — galerias e torneios, modo de sistema e painel existente preservados */
+.ipz-com-page{padding:145px max(22px,calc((100vw - 1160px)/2)) 90px;min-height:75vh;color:var(--ink,#12222b)}
+.ipz-com-head{display:flex;gap:20px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin-bottom:30px}
+.ipz-com-head h1{font-size:clamp(2.3rem,6.5vw,6rem);line-height:.96;letter-spacing:-.065em;margin:14px 0}
+.ipz-com-head p{max-width:590px;opacity:.72}.ipz-com-eyebrow{text-transform:uppercase;letter-spacing:.2em;font-size:.76rem;font-weight:750}
+.ipz-com-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.ipz-com-card{border:1px solid color-mix(in srgb,currentColor 15%,transparent);border-radius:24px;overflow:hidden;background:color-mix(in srgb,var(--bg,#fff) 88%,transparent);box-shadow:0 14px 42px rgba(0,0,0,.05)}
+.ipz-com-card img{width:100%;height:270px;object-fit:cover;display:block}.ipz-com-card .ipz-pad{padding:22px}.ipz-com-card h3{font-size:1.28rem;line-height:1.12;margin:6px 0 13px}
+.ipz-com-card p{font-size:.89rem;opacity:.77}.ipz-com-meta{font-size:.73rem;text-transform:uppercase;font-weight:800;letter-spacing:.09em;opacity:.65}
+.ipz-com-btn{background:#cff902;border:0;color:#132023;border-radius:50px;display:inline-block;padding:13px 22px;cursor:pointer;font-weight:800;text-decoration:none}.ipz-com-btn.secondary{border:1px solid currentColor;background:transparent;color:inherit}
+.ipz-com-form{padding:22px;border-radius:24px;border:1px solid color-mix(in srgb,currentColor 20%,transparent);background:color-mix(in srgb,var(--bg,#fff) 80%,transparent);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);margin-bottom:32px}
+.ipz-com-form label{display:flex;flex-direction:column;gap:7px;font-size:.84rem;font-weight:700}.ipz-com-form input,.ipz-com-form textarea{width:100%;padding:12px 14px;border:1px solid #abb3b5;border-radius:12px;background:transparent;color:inherit;font:inherit}.ipz-com-form .wide{grid-column:1/-1}.ipz-com-form button{justify-self:start}.ipz-com-form textarea{min-height:100px}
+.ipz-com-notice{padding:14px 20px;border-radius:14px;background:color-mix(in srgb,#cff902 15%,transparent);margin-bottom:25px;line-height:1.5}.ipz-com-bracket{display:grid;gap:8px;margin-top:18px}.ipz-match{padding:12px 15px;border-radius:12px;background:color-mix(in srgb,currentColor 6%,transparent);display:flex;justify-content:space-between;gap:12px}
+.ipz-admin-actions{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0}.ipz-admin-actions button{font-size:.8rem;padding:8px 12px;cursor:pointer;border-radius:10px;border:1px solid #aeb9c1;background:transparent;color:inherit}.ipz-admin-actions .danger{color:#bc3535}
+.ipz-com-card .ipz-pad{overflow-wrap:anywhere}
+@media(max-width:800px){.ipz-com-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ipz-com-page{padding-top:130px}}
+@media(max-width:560px){.ipz-com-grid,.ipz-com-form{grid-template-columns:1fr}.ipz-com-page{padding-inline:16px}.ipz-com-card img{height:245px}}
+@media(prefers-color-scheme:dark){.ipz-com-page{color:#f0f5f3}.ipz-com-card,.ipz-com-form{background:rgba(20,33,36,.78)}.ipz-com-form input,.ipz-com-form textarea{border-color:#65777c}}
+@media(prefers-reduced-motion:no-preference){.ipz-com-card{transition:transform .25s ease,box-shadow .25s ease}.ipz-com-card:hover{transform:translateY(-5px);box-shadow:0 20px 60px rgba(0,0,0,.13)}}
