@@ -44,3 +44,22 @@
 @media(max-width:480px){.ipz-tour-topnav{align-items:flex-start}.ipz-tour-menu-links{width:100%;justify-content:space-between}.ipz-tour-ranking .ipz-ranking{min-width:310px}.ipz-tour-intro,.ipz-tour-ranking,.ipz-tour-gallery{padding:22px}.ipz-tour-participants .ipz-participant-list{columns:1}}
 @media(prefers-color-scheme:dark){.ipz-tour-layout{background:rgba(15,26,28,.9)}.ipz-tour-gallery{background:rgba(255,255,255,.025)}.ipz-tour-menu-label,.ipz-tour-demo{color:#cff902}}
 @media(prefers-reduced-motion:reduce){.ipz-tour-photo img{transition:none}}
+
+/* V15 — Filtros reais por separador nas páginas individuais de torneios. */
+.ipz-tour-topnav{position:relative;z-index:2}
+.ipz-tour-menu-links .ipz-tour-tab{appearance:none;border:1px solid transparent;border-radius:999px;background:transparent;color:inherit;font:inherit;font-size:.86rem;font-weight:750;line-height:1.1;cursor:pointer;padding:12px 17px;white-space:nowrap;transition:background .2s ease,border-color .2s ease,color .2s ease}
+.ipz-tour-menu-links .ipz-tour-tab:hover{background:rgba(207,249,2,.10);border-color:rgba(207,249,2,.35)}
+.ipz-tour-menu-links .ipz-tour-tab.is-active{background:#cff902;color:#101a18;border-color:#cff902;box-shadow:0 4px 20px rgba(207,249,2,.15)}
+.ipz-tour-menu-links .ipz-tour-tab:focus-visible{outline:3px solid #cff902;outline-offset:3px}
+.ipz-tour-filter-content{min-height:440px}
+.ipz-tour-panel{padding:clamp(12px,2vw,24px);animation:ipz-tour-fade .25s ease both}
+.ipz-tour-panel[hidden]{display:none!important}
+.ipz-tour-panel .ipz-tour-intro,.ipz-tour-panel .ipz-tour-ranking{border:0;max-width:1100px;margin:0 auto}
+.ipz-tour-panel .ipz-tour-gallery{border:0;background:transparent;max-width:1100px;margin:0 auto}
+.ipz-tour-panel .ipz-tour-photo-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.ipz-tour-panel .ipz-tour-photo-featured{grid-column:span 2}
+.ipz-tour-subtitle{font-size:clamp(1.25rem,2vw,1.7rem);margin:28px 0 14px}
+.ipz-tour-panel .ipz-participant-list{columns:2;column-gap:45px;line-height:2}
+@keyframes ipz-tour-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:650px){.ipz-tour-topnav{gap:12px}.ipz-tour-menu-links{width:100%;display:flex;gap:5px;overflow-x:auto}.ipz-tour-menu-links .ipz-tour-tab{padding:11px 12px;font-size:.78rem}.ipz-tour-panel .ipz-tour-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ipz-tour-panel .ipz-tour-photo-featured{grid-column:1/-1}.ipz-tour-panel .ipz-participant-list{columns:1}}
+@media(prefers-reduced-motion:reduce){.ipz-tour-panel{animation:none}.ipz-tour-menu-links .ipz-tour-tab{transition:none}}
