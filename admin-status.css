@@ -1,0 +1,124 @@
+/* V17 — Estados de compras, reservas e pagamentos. Apenas painel de gestão. */
+.adm .ipz-status-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin:0 0 22px;padding:12px;background:rgba(120,145,135,.08);border:1px solid rgba(120,145,135,.14);border-radius:18px}
+.adm .ipz-filter-chip{appearance:none;border:1px solid rgba(100,119,113,.26);border-radius:100px;padding:10px 16px;min-height:40px;font-weight:600;font-size:.82rem;line-height:1.25;font-family:inherit;background:transparent;color:inherit;cursor:pointer;transition:background .2s,transform .2s,color .2s;white-space:normal}
+.adm .ipz-filter-chip:hover,.adm .ipz-state-choice:hover{transform:translateY(-2px);border-color:#a6c409}
+.adm .ipz-filter-chip.is-selected{background:#cff902;color:#101b18;border-color:#cff902;box-shadow:0 2px 10px rgba(188,232,0,.15)}
+.adm .ipz-admin-state-table{overflow:auto;width:100%;border-radius:18px}
+.adm .ipz-admin-state-table .tb2{min-width:970px;width:100%;table-layout:auto}
+.adm .ipz-admin-state-table .tb2 th,.adm .ipz-admin-state-table .tb2 td{vertical-align:top;padding:17px 12px;overflow-wrap:break-word}
+.adm .ipz-admin-state-table .tb2 th:last-child{min-width:260px;width:34%}
+.adm .ipz-state-buttons{display:flex;flex-wrap:wrap;gap:7px;min-width:225px}
+.adm .ipz-state-choice{appearance:none;min-height:34px;padding:7px 11px;border:1px solid rgba(115,135,130,.27);border-radius:10px;background:rgba(125,145,140,.07);color:inherit;font-weight:600;font-size:.75rem;line-height:1.25;font-family:inherit;cursor:pointer;transition:transform .18s,background .18s,border .18s;white-space:normal}
+.adm .ipz-state-choice.is-selected{background:#cff902!important;color:#102014!important;border-color:#cff902!important;box-shadow:0 0 0 1px rgba(207,249,2,.15)}
+.adm .ipz-state-pending{display:block;color:#aa7b05;font-weight:650;margin-top:9px}
+.adm .ipz-state-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 4px 8px;flex-wrap:wrap}
+.adm .ipz-save-states{background:#cff902!important;color:#142015!important;border-color:#cff902!important;min-width:210px}
+.adm .ipz-save-states:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.adm .ipz-state-feedback{font-size:.85rem;color:var(--mut,#667680);min-height:1.4em;margin:3px 0 10px}
+.adm .ipz-com-card .ipz-admin-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.adm .ipz-com-card .ipz-admin-actions button{border-radius:12px;padding:10px 12px;min-height:40px;cursor:pointer;font-weight:600;font-size:.8rem;line-height:1.2;font-family:inherit}
+@media(max-width:750px){.adm .ipz-status-toolbar{gap:7px}.adm .ipz-filter-chip{padding:9px 12px;font-size:.75rem}.adm .ipz-state-footer .btn{width:100%}}
+@media(prefers-reduced-motion:reduce){.adm .ipz-filter-chip,.adm .ipz-state-choice{transition:none!important}}
+
+
+/* V22 — Botões de filtros com o mesmo estilo visual dos botões normais do painel.
+   Regras deliberadamente específicas para neutralizar o aspecto cinzento nativo
+   em Brave, Chrome e Safari, sem afectar o website público. */
+body.adm .ad-main .ipz-status-toolbar {
+  display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+  padding:0!important;margin:18px 0 22px!important;
+  border:0!important;border-radius:0!important;background:transparent!important;
+}
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip {
+  -webkit-appearance:none!important;appearance:none!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;position:relative;
+  min-width:88px;min-height:43px!important;
+  padding:10px 19px!important;margin:0!important;
+  border:1.5px solid #dce5e0!important;border-radius:999px!important;
+  background:#fff!important;color:#15272a!important;opacity:1!important;
+  font-family:inherit!important;font-size:.84rem!important;font-weight:700!important;line-height:1.25!important;
+  text-align:center!important;text-decoration:none!important;letter-spacing:0!important;
+  box-shadow:0 3px 12px rgba(11,31,26,.04)!important;
+  cursor:pointer!important;white-space:nowrap!important;
+  transition:background-color .2s,border-color .2s,color .2s,transform .2s,box-shadow .2s!important;
+}
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip:hover {
+  transform:translateY(-2px)!important;
+  background:#eff6ef!important;border-color:#1d7651!important;color:#145b3e!important;
+  box-shadow:0 6px 16px rgba(9,84,56,.11)!important;
+}
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip.is-selected,
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip[aria-pressed="true"] {
+  background:#136241!important;border-color:#136241!important;color:#fff!important;
+  box-shadow:0 5px 16px rgba(19,98,65,.18)!important;
+}
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip.is-selected:hover {
+  background:#0f5036!important;border-color:#0f5036!important;color:#fff!important;
+}
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip:focus-visible {
+  outline:3px solid #cff902!important;outline-offset:3px!important;
+}
+@media(max-width:700px) {
+  body.adm .ad-main .ipz-status-toolbar {gap:8px!important}
+  body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip {min-width:0;min-height:40px!important;padding:9px 14px!important;font-size:.77rem!important}
+}
+@media(prefers-color-scheme:dark) {
+  body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip:not(.is-selected) {
+    background:#f6faf7!important;color:#142624!important;border-color:#cbd8d1!important;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip {transition:none!important;transform:none!important}
+}
+
+/* V23 — Consistência dos filtros e estados em Compras e Reservas.
+   Botões nativos normalizados para Brave, Safari e Chrome. */
+body.adm .ad-main .ipz-state-buttons { display:flex!important; flex-wrap:wrap!important; align-items:center!important; gap:8px!important; min-width:0!important; }
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice {
+  -webkit-appearance:none!important; appearance:none!important;
+  display:inline-flex!important; align-items:center!important; justify-content:center!important;
+  box-sizing:border-box!important; min-height:39px!important; min-width:0!important;
+  padding:9px 14px!important; margin:0!important;
+  border:1.5px solid #dce5e0!important; border-radius:999px!important;
+  background:#fff!important; color:#15272a!important; opacity:1!important;
+  font-family:inherit!important; font-size:.78rem!important; font-weight:700!important; line-height:1.2!important;
+  text-align:center!important; white-space:normal!important;
+  box-shadow:0 3px 12px rgba(11,31,26,.04)!important;
+  cursor:pointer!important;
+  transition:background-color .18s,border-color .18s,color .18s,transform .18s,box-shadow .18s!important;
+}
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice:hover {
+  transform:translateY(-2px)!important; background:#eff6ef!important;
+  border-color:#1d7651!important; color:#145b3e!important;
+  box-shadow:0 6px 16px rgba(9,84,56,.11)!important;
+}
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice.is-selected,
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice[aria-pressed="true"] {
+  background:#136241!important; color:#fff!important;
+  border-color:#136241!important; box-shadow:0 5px 16px rgba(19,98,65,.18)!important;
+}
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice.is-selected:hover {
+  background:#0f5036!important; color:#fff!important; border-color:#0f5036!important;
+}
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice:focus-visible {
+  outline:3px solid #cff902!important; outline-offset:3px!important;
+}
+body.adm .ad-main .ipz-state-footer button.ipz-save-states {
+  appearance:none!important; -webkit-appearance:none!important;
+  display:inline-flex!important; align-items:center!important; justify-content:center!important;
+  padding:12px 21px!important; min-height:44px!important; border-radius:999px!important;
+  background:#cff902!important; color:#102014!important; border:1.5px solid #cff902!important;
+  font-family:inherit!important; font-weight:750!important; font-size:.84rem!important;
+  box-shadow:0 4px 14px rgba(85,118,0,.13)!important;
+}
+body.adm .ad-main .ipz-state-footer button.ipz-save-states:disabled {
+  opacity:.48!important; cursor:not-allowed!important; box-shadow:none!important;
+}
+@media(max-width:700px) {
+  body.adm .ad-main .ipz-state-buttons {gap:6px!important}
+  body.adm .ad-main .ipz-state-buttons button.ipz-state-choice {min-height:37px!important;padding:8px 11px!important;font-size:.73rem!important}
+}
+@media(prefers-reduced-motion:reduce) {
+  body.adm .ad-main .ipz-state-buttons button.ipz-state-choice {transition:none!important;transform:none!important}
+}
