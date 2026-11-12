@@ -1,3 +1,16 @@
+## V18 — Loja via WhatsApp
+
+- Número de atendimento: **+258 87 738 8644** (`https://wa.me/258877388644`).
+- Fluxo: escolher produtos e tamanhos → carrinho → **Enviar lista pelo WhatsApp**.
+- O WhatsApp abre com produtos, quantidades, tamanhos e subtotal estimado já preenchidos. O cliente deve premir **Enviar** na conversa.
+- **Não há checkout, cobrança automática nem registo de encomenda na base de dados** por esta acção. O stock não é deduzido automaticamente; confirmar disponibilidade e preço antes de fechar a venda.
+- O carrinho mantém-se no navegador depois de abrir o WhatsApp, caso o utilizador queira rever ou reenviar a lista.
+- O módulo separado de **reservas de campo e pagamentos de reservas** não foi alterado.
+- Ficheiros actualizados: `index.html`, `script.js`, `server.js` (para servir o novo CSS), `README.md`; adicionado `whatsapp-shop.css`.
+- No GitHub, colocar todos os ficheiros na raiz e manter Root Directory vazio no Render.
+
+---
+
 # Indoor Padel Zone — Reservas V10 (4 campos)
 
 Esta versão apresenta as quatro opções **Campo 1, Campo 2, Campo 3 e Campo 4** na primeira etapa da reserva. O cliente escolhe explicitamente o campo. A verificação de disponibilidade devolve os campos livres para a data e o intervalo de horas seleccionados; o servidor impede sobreposições antes de guardar uma reserva no Neon.
@@ -297,3 +310,25 @@ Actualização incremental: substituir apenas `community.js` e `community.css` n
 ## V15 — Filtros de torneios
 
 Os botões **Informações**, **Ranking** e **Galeria** nas páginas individuais dos torneios funcionam agora como filtros interactivos (tabs). Mostram apenas a secção seleccionada e destacam a activa. Também suportam navegação por teclado com setas, Home e End, e `prefers-reduced-motion`. Não é necessária alteração no Neon ou servidor. Para actualizar apenas esta funcionalidade, substituir `community.js` e `community.css`.
+
+
+## V16 — Painel administrativo refinado
+
+- Ícones SVG locais nos menus e nas setas do dashboard, sem bibliotecas ou fontes externas.
+- Alturas, dimensões e espaçamentos consistentes nos botões, cartões e cabeçalhos.
+- «Terminar sessão» como último botão da barra lateral, destacado na cor #CFF902.
+- Animações de entrada do menu, cartões, ícones, gráficos e contagem dos indicadores.
+- Respeita `prefers-reduced-motion`; os números são animados apenas na entrada, sem animar novamente a cada consulta à API.
+- `admin-ui.css` e `admin-ui.js` são carregados só como ajustes da área Admin/Recepcionista.
+- Para aplicar: substituir `index.html`, `script.js` e `server.js`; adicionar `admin-ui.css` e `admin-ui.js`. Tudo na raiz do GitHub.
+
+**Atenção:** este pacote parte da V15; não altera o esquema do Neon, os dados nem a autenticação.
+
+
+## V17 — Gestão de estados e pagamentos
+
+- Compras e reservas têm filtros por todos os estados (incluindo concluídos e cancelados), botões de estado por registo e botão **Guardar alterações e aplicar filtro**. As alterações não são gravadas ao clicar num estado: só quando se guarda.
+- O Admin pode verificar pagamentos móveis recebidos externamente e marcá-los como **Confirmado manualmente**, ou cancelar o registo administrativo de pagamento. Isto não debita, reembolsa ou cancela uma transacção externa.
+- Pagamentos por cartão só podem ser confirmados por verificação directa do gateway; o botão de confirmar manualmente não aparece para cartões.
+- Na secção Pagamentos estão disponíveis os filtros Todos, Pendentes, Concluídos e Cancelados.
+- Substitui `index.html`, `script.js`, `community.js`, `server.js` e adiciona `admin-status.css` no repositório. A base Neon existente é mantida.
