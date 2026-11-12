@@ -45,7 +45,7 @@ const safeCompare=(a,b)=>{
   const ah=crypto.createHash('sha256').update(String(a)).digest(), bh=crypto.createHash('sha256').update(String(b)).digest();
   return crypto.timingSafeEqual(ah,bh);
 };
-function json(res,code,data,headers={}){res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff',...headers});res.end(JSON.stringify(data));}
+function json(res,code,data,headers={}){res.writeHead(code,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY',...headers});res.end(JSON.stringify(data));}
 function error(res,code,message){json(res,code,{error:message});}
 function setCookie(token,clear=false){return `ipz_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${clear?0:28800}${PROD||process.env.COOKIE_SECURE==='1'?'; Secure':''}`;}
 function cookies(req){return (req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('ipz_session='))?.slice(12)||'';}
@@ -64,8 +64,11 @@ async function boot(){
  CREATE TABLE IF NOT EXISTS ipz_gallery (id TEXT PRIMARY KEY, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS ipz_tournaments (id TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS ipz_tournament_photos (id TEXT PRIMARY KEY, tournament_id TEXT NOT NULL REFERENCES ipz_tournaments(id) ON DELETE CASCADE, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
- CREATE TABLE IF NOT EXISTS ipz_seed_runs (key TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
+ CREATE TABLE IF NOT EXISTS ipz_seed_runs (key TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ CREATE TABLE IF NOT EXISTS ipz_audit_log (id BIGSERIAL PRIMARY KEY, happened_at TIMESTAMPTZ NOT NULL DEFAULT now(), actor_email TEXT NOT NULL, actor_role TEXT NOT NULL, entity_type TEXT NOT NULL, entity_ref TEXT NOT NULL, previous_status TEXT, new_status TEXT);
+ CREATE INDEX IF NOT EXISTS ipz_audit_log_happened_at ON ipz_audit_log(happened_at DESC);`);
  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS ipz_orders_request_id ON ipz_orders ((data->>'requestId')) WHERE data ? 'requestId'");
+ await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS ipz_bookings_request_id ON ipz_bookings ((data->>'requestId')) WHERE data ? 'requestId'");
  // Migração idempotente de categorias antigas (0-5) para o catálogo v2 (0-9).
  // Só converte artigos sem categoryVersion; preserva preços, imagens, stock e vendas.
  await pool.query(`UPDATE ipz_products
@@ -120,6 +123,17 @@ async function tx(fn){const c=await pool.connect();try{await c.query('BEGIN');co
 function bad(m,status=400){const e=new Error(m);e.status=status;throw e;}
 // Registo de intenção comercial por WhatsApp. Não é cobrança nem venda confirmada.
 const orderSubmitAttempts=new Map();
+// Limite básico por instância (não distribuído entre instâncias). Utilizar Redis ou gateway externo em produção de grande escala.
+const publicWrites=new Map();
+function publicRateLimit(req,route,max=12){
+ const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'unknown').split(',')[0].trim();
+ const key=ip+'|'+route,now=Date.now();
+ const history=(publicWrites.get(key)||[]).filter(t=>now-t<60000);
+ if(history.length>=max)bad('Demasiados pedidos. Tenta novamente dentro de um minuto.',429);
+ history.push(now);publicWrites.set(key,history);
+ if(publicWrites.size>5000){for(const [k,v] of publicWrites)if(v[v.length-1]<now-60000)publicWrites.delete(k);}
+}
+
 async function submitWhatsAppOrder(b,req){
  const input=Array.isArray(b.items)?b.items:[];
  if(!input.length||input.length>30)bad('Carrinho inválido');
@@ -163,6 +177,8 @@ function hoursValue(time){return Number(String(time||'').slice(0,2));}
 function bookingInterval(record){const start=hoursValue(record.time);const duration=Number(record.duration)||60;const end=record.endTime?hoursValue(record.endTime):start+Math.ceil(duration/60);return {start,end};}
 function bookingOverlaps(other,start,end){const r=bookingInterval(other);return start<r.end&&end>r.start;}
 async function submitBooking(b){
+ const requestId=cut(b.requestId,80);
+ if(!/^[a-f0-9-]{36}$/i.test(requestId))bad('Identificador de reserva inválido');
  const court=cut(b.court,30),date=cut(b.date,10),time=cut(b.time,5),endTime=cut(b.endTime,5),bi=cut(b.bi,30),name=cut(b.cn,160),phone=cut(b.cp,24);
  const from=hoursValue(time),to=hoursValue(endTime),duration=(to-from)*60;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d\d:00$/.test(time)||!/^\d\d:00$/.test(endTime)||from<6||from>=23||to>23||to<=from||!name.includes(' ')||name.length<3||!/[\p{L}]/u.test(name)||!/^[\p{L}\p{N}/. -]{5,30}$/u.test(bi))bad('Data, horário, nome ou B.I. inválidos');
@@ -174,10 +190,12 @@ async function submitBooking(b){
  return tx(async db=>{
    // O mesmo lock por data é usado para todas as novas reservas, impedindo sobreposição em concorrência.
    await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',['ipz-booking-'+date]);
+   const previous=await db.query("SELECT data FROM ipz_bookings WHERE data->>'requestId'=$1 LIMIT 1",[requestId]);
+   if(previous.rows.length)return previous.rows[0].data;
    const entries=(await db.query("SELECT court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date])).rows;
    if(entries.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},from,to)))bad('O campo seleccionado já está ocupado neste período.',409);
    {
-     const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,endTime,cn:name,bi,cp:normalizePhone(phone),channel:'whatsapp',contactWhatsApp:'+258 87 738 8644',duration,price:(duration/60)*bookingPrice,pay:'A combinar pelo WhatsApp',payAuto:false,st:'Pendente'};
+     const item={ref:ref('RES'),requestId,at:new Date().toISOString(),court,date,time,endTime,cn:name,bi,cp:normalizePhone(phone),channel:'whatsapp',contactWhatsApp:'+258 87 738 8644',duration,price:(duration/60)*bookingPrice,pay:'A combinar pelo WhatsApp',payAuto:false,st:'Pendente'};
      await db.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[item.ref,court,date,time,item.st,JSON.stringify(item)]);
      return item;
    }
@@ -185,7 +203,7 @@ async function submitBooking(b){
  });
 }
 async function submitMessage(b){if(!cut(b.n)||!cut(b.m)||!/^\S+@\S+\.\S+$/.test(cut(b.e)))bad('Dados da mensagem inválidos');const o={ref:ref('MSG'),at:new Date().toISOString(),n:cut(b.n),e:cut(b.e,220),m:cut(b.m,2000),rd:false};await pool.query('INSERT INTO ipz_messages(ref,data) VALUES($1,$2::jsonb)',[o.ref,JSON.stringify(o)]);return o;}
-async function modifyRecord(c,payload){return tx(async db=>{
+async function modifyRecord(c,payload,actor={email:'system',role:'system'}){return tx(async db=>{
   if(!payload||!Array.isArray(payload.list))bad('Alteração inválida');
   const table=recordTables[c];
   // A interface envia a lista inteira. Actualizamos SOMENTE os campos permitidos.
@@ -223,9 +241,12 @@ async function modifyRecord(c,payload){return tx(async db=>{
       const it=bookingInterval(current);
       if(entries.some(x=>x.ref!==patch.ref&&x.court===current.court&&bookingOverlaps({...x.data,time:x.booking_time},it.start,it.end)))bad('Conflito: o campo está ocupado neste intervalo.',409);
     }
-    try{await db.query('UPDATE ipz_bookings SET status=$2,data=$3::jsonb WHERE ref=$1',[patch.ref,next.st,JSON.stringify(next)]);}catch(e){if(e.code==='23505')bad('Conflito: este campo e horário já estão ocupados',409);throw e;}continue;
+    try{await db.query('UPDATE ipz_bookings SET status=$2,data=$3::jsonb WHERE ref=$1',[patch.ref,next.st,JSON.stringify(next)]);}catch(e){if(e.code==='23505')bad('Conflito: este campo e horário já estão ocupados',409);throw e;}
+    if(current.st!==next.st)await db.query('INSERT INTO ipz_audit_log(actor_email,actor_role,entity_type,entity_ref,previous_status,new_status) VALUES($1,$2,$3,$4,$5,$6)',[actor.email,actor.role,c,patch.ref,current.st,next.st]);
+    continue;
    }
    await db.query(`UPDATE ${table} SET data=$2::jsonb WHERE ref=$1`,[patch.ref,JSON.stringify(next)]);
+   if(c==='orders'&&current.st!==next.st)await db.query('INSERT INTO ipz_audit_log(actor_email,actor_role,entity_type,entity_ref,previous_status,new_status) VALUES($1,$2,$3,$4,$5,$6)',[actor.email,actor.role,c,patch.ref,current.st,next.st]);
   }return true;
 });}
 async function saveProduct(id,v){if(!/^[a-zA-Z0-9_-]{2,60}$/.test(id))bad('ID inválido');
@@ -322,11 +343,12 @@ function drawMatches(names){
  const matches=[];for(let i=0;i<list.length;i+=2)matches.push({a:list[i],b:list[i+1]||null});return matches;
 }
 async function galleryList(){const q=await pool.query('SELECT id,caption,created_at FROM ipz_gallery ORDER BY created_at DESC LIMIT 150');return q.rows.map(x=>({...x,url:'/api/gallery/image/'+x.id}));}
-async function tournamentList(admin=false){const q=await pool.query('SELECT id,data FROM ipz_tournaments ORDER BY (data->>\'date\') DESC LIMIT 300');return q.rows.filter(x=>admin||['Publicado','Concluído'].includes(x.data.status)).map(x=>({id:x.id,...x.data}));}
+async function tournamentList(admin=false){const q=await pool.query('SELECT id,data FROM ipz_tournaments ORDER BY (data->>\'date\') DESC LIMIT 300');return q.rows.filter(x=>admin||['Publicado','Concluído'].includes(x.data.status)).map(x=>{const item={id:x.id,...x.data};if(!admin){delete item.email;delete item.phone;}return item;});}
 async function publicTournament(id){
  const q=await pool.query('SELECT id,data FROM ipz_tournaments WHERE id=$1',[id]);
  if(!q.rows.length||!['Publicado','Concluído'].includes(q.rows[0].data.status))return null;
  const item={id:q.rows[0].id,...q.rows[0].data};
+ delete item.email;delete item.phone;
  const photos=await pool.query('SELECT id,caption FROM ipz_tournament_photos WHERE tournament_id=$1 ORDER BY created_at DESC LIMIT 80',[id]);
  return {...item,photos:photos.rows.map(x=>({...x,url:'/api/tournaments/photo/'+x.id}))};
 }
@@ -342,7 +364,7 @@ function cleanRanking(items, participants){
 // Não existem integrações de gateway de pagamento nesta versão.
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon'};
 async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.pathname,m=req.method;
- if(r==='/health'&&m==='GET')return json(res,200,{ok:true});
+ if(r==='/health'&&m==='GET'){try{await pool.query('SELECT 1');return json(res,200,{ok:true,database:'connected'});}catch{return error(res,503,'Base de dados indisponível');}}
  if(r.startsWith('/api/')){
   if(m!=='GET'&&!sameOrigin(req))return error(res,403,'Origem não autorizada');
 
@@ -404,7 +426,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(r==='/api/snapshot/products'&&m==='GET')return json(res,200,{docs:await snapshot('products')});
   if(r.startsWith('/api/submit/')&&m==='POST'){
    const c=r.split('/').pop(),b=await parse(req);let item;
-   if(c==='orders')item=await submitWhatsAppOrder(b,req);else if(c==='bookings')item=await submitBooking(b);else if(c==='messages')item=await submitMessage(b);else return error(res,404,'Rota inexistente');
+   if(c==='orders')item=await submitWhatsAppOrder(b,req);else if(c==='bookings'){publicRateLimit(req,c,8);item=await submitBooking(b);}else if(c==='messages'){publicRateLimit(req,c,5);item=await submitMessage(b);}else return error(res,404,'Rota inexistente');
    return json(res,201,{ok:true,item});
   }
   const s=await session(req);if(!s)return error(res,401,'Inicia sessão para aceder ao painel');
@@ -475,6 +497,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(r.startsWith('/api/admin/tournaments/')&&m==='DELETE'){
      if(s.role!=='admin')return error(res,403,'Apenas Admin');await pool.query('DELETE FROM ipz_tournaments WHERE id=$1',[r.split('/').pop()]);return json(res,200,{ok:true});
   }
+  if(r==='/api/admin/audit'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin');const q=await pool.query('SELECT happened_at,actor_email,actor_role,entity_type,entity_ref,previous_status,new_status FROM ipz_audit_log ORDER BY happened_at DESC LIMIT 300');return json(res,200,{items:q.rows});}
   if(r==='/api/admin/export-45-days'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode exportar o relatório');return excel45Days(res);}
   const sm=r.match(/^\/api\/snapshot\/(orders|bookings|messages|products)$/);
   if(sm&&m==='GET')return json(res,200,{docs:await snapshot(sm[1])});
@@ -482,14 +505,14 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(itemRoute&&m==='PATCH'){
    const [,c,id]=itemRoute,patch=await parse(req);
    if(!/^\w+-[A-Za-z0-9]+$/.test(id))return error(res,400,'Referência inválida');
-   await modifyRecord(c,{list:[{ref:id,...patch}]});return json(res,200,{ok:true});
+   await modifyRecord(c,{list:[{ref:id,...patch}]},s);return json(res,200,{ok:true});
   }
   const doc=r.match(/^\/api\/doc\/(orders|bookings|messages|products)\/([a-zA-Z0-9_-]+)$/);
   if(doc){const [,c,id]=doc;
    if(m==='GET'){if(c==='products'&&s.role!=='admin')return error(res,403,'Acesso restrito');let data=await getDoc(c,id);return json(res,200,{exists:!!data,data});}
    if(m==='PUT'){
     if(c==='products'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode editar produtos');await saveProduct(id,await parse(req,1100000));}
-    else {if(id!=='local')return error(res,400,'Identificador inválido');await modifyRecord(c,await parse(req));}
+    else {if(id!=='local')return error(res,400,'Identificador inválido');await modifyRecord(c,await parse(req),s);}
     return json(res,200,{ok:true});
    }
   }
@@ -497,9 +520,9 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  }
  if(m!=='GET'&&m!=='HEAD')return error(res,405,'Método não permitido');
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
- if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-status.css','whatsapp-shop.css','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
+ if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-status.css','whatsapp-shop.css','booking-whatsapp.css','campeonato-exemplo-1.webp','campeonato-exemplo-2.webp','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
-  res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':file.endsWith('.html')?'no-cache':'public, max-age=600'});
+  res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY','Cache-Control':file.endsWith('.html')?'no-cache':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
  });
 }
