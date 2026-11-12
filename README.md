@@ -285,3 +285,10 @@ Ao publicar esta versão no Render, o servidor insere **uma única vez** no Neon
 Os exemplos aparecem em **Nossos Torneios → Torneios Realizados** e abrem a página de detalhe. O Admin pode editar o ranking, acrescentar fotos reais ou apagar os exemplos. Um marcador persistente `ipz_seed_runs` impede que sejam recriados após serem apagados. Os torneios existentes não são modificados.
 
 **Para actualizar:** substituir `server.js`, `community.js`, `README.md` e adicionar `campeonato-exemplo-1.webp` e `campeonato-exemplo-2.webp` na raiz do repositório. Não é preciso configurar novas variáveis no Render. As imagens locais são usadas apenas durante a inserção inicial; as cópias ficam armazenadas no Neon.
+
+
+## V14 — Página individual de torneio (layout solicitado)
+
+A página de detalhes de cada torneio segue o esquema fornecido: menu horizontal interno no topo; título, descrição e ranking na coluna esquerda; galeria do torneio à direita. Participantes acessíveis através de lista expansível sob o ranking. Em telemóvel, as colunas passam a ser apresentadas verticalmente.
+
+Actualização incremental: substituir apenas `community.js` e `community.css` na raiz do repositório GitHub. Não requer migração na base Neon. A descrição usa `description` se estiver disponível no torneio; caso contrário, mostra um texto neutro.
