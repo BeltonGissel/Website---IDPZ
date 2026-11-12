@@ -22,7 +22,10 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5, conn
   idleTimeoutMillis: 30000, ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: true } });
 const catalog=JSON.parse(fs.readFileSync(path.join(ROOT,'catalog.json'),'utf8'));
 const courts=['Campo 1','Campo 2','Campo 3','Campo 4'];
-const times=['08:00','09:30','11:00','14:00','15:30','17:00','18:30'];
+const times=Array.from({length:17},(_,i)=>String(i+6).padStart(2,'0')+':00');
+const bookingPrice=1700;
+const normalizePhone=v=>'+258'+String(v||'').replace(/\D/g,'').replace(/^258/,'');
+const phoneValid=(v,method)=>{const n=normalizePhone(v);return method==='emola'?/^\+2588[67]\d{7}$/.test(n):method==='mpesa'?/^\+2588[45]\d{7}$/.test(n):/^\+2588\d{8}$/.test(n);};
 const ordersStatuses=['Por processar','Em preparação','Pronto','Entregue','Cancelado'];
 const bookingStatuses=['Pendente','Confirmada','Cancelada'];
 const attempts=new Map();
@@ -79,7 +82,9 @@ async function submitOrder(b){return tx(async db=>{
  if(!input.length||input.length>30)bad('Carrinho inválido');
  const quantities=new Map(),sizes=new Map();
  for(const i of input){let id=cut(i.id,40),q=Number(i.q);if(!/^[\w-]{2,40}$/.test(id)||!Number.isInteger(q)||q<1||q>100)bad('Quantidade inválida');quantities.set(id,(quantities.get(id)||0)+q);sizes.set(id+'|'+cut(i.sz,10),{id,sz:cut(i.sz,10),q:(sizes.get(id+'|'+cut(i.sz,10))?.q||0)+q});}
- if(!cut(b.cn)||!/^[0-9+ ()-]{9,22}$/.test(cut(b.cp))||!/^\S+@\S+\.\S+$/.test(cut(b.ce)))bad('Dados de contacto inválidos');
+ if(!cut(b.cn)||!phoneValid(b.cp)||!/^\S+@\S+\.\S+$/.test(cut(b.ce)))bad('Dados de contacto inválidos');
+  if(!['card','emola','mpesa'].includes(b.pm))bad('Método de pagamento inválido');
+  if(b.pm!=='card'&&!phoneValid(b.w,b.pm))bad('Número de pagamento incompatível com a operadora');
  if(b.dl==='del'&&!cut(b.a))bad('Indica o endereço de entrega');
  // Bloqueio determinístico de linhas evita venda acima do stock em compras simultâneas.
  const products=new Map();for(const id of [...quantities.keys()].sort()){
@@ -88,17 +93,27 @@ async function submitOrder(b){return tx(async db=>{
  }
  const normalized=[...sizes.values()].map(i=>{const p=products.get(i.id);return{id:i.id,n:p.n,sz:i.sz,q:i.q,u:p.p,t:p.p*i.q};});
  const total=normalized.reduce((v,i)=>v+i.t,0);
- const o={ref:ref('PED'),at:new Date().toISOString(),cn:cut(b.cn),cp:cut(b.cp),ce:cut(b.ce,220),co:cut(b.co,500),pm:['card','emola','mpesa'].includes(b.pm)?b.pm:'card',dl:b.dl==='del'?'del':'pick',a:cut(b.a,250),total,pay:'Pago (simulado)',payAuto:true,st:'Por processar',ap:true,items:normalized};
+ const o={ref:ref('PED'),at:new Date().toISOString(),cn:cut(b.cn),cp:normalizePhone(b.cp),ce:cut(b.ce,220),co:cut(b.co,500),pm:b.pm,w:b.pm==='card'?'':normalizePhone(b.w),dl:b.dl==='del'?'del':'pick',a:cut(b.a,250),total,pay:'Pago (simulado)',payAuto:true,st:'Por processar',ap:true,items:normalized};
  for(const [id,q] of quantities){const p=products.get(id);await db.query('UPDATE ipz_products SET data=$2::jsonb WHERE id=$1',[id,JSON.stringify({...p,s:p.s-q})]);}
  await db.query('INSERT INTO ipz_orders(ref,data) VALUES($1,$2::jsonb)',[o.ref,JSON.stringify(o)]);
  return o;
 });}
 async function submitBooking(b){
- const court=cut(b.court,30),date=cut(b.date,10),time=cut(b.time,5);
- if(!courts.includes(court)||!/^\d{4}-\d{2}-\d{2}$/.test(date)||!times.includes(time)||!cut(b.cn)||!/^\+?[\d ()-]{9,22}$/.test(cut(b.cp)))bad('Dados da reserva inválidos');
- const d=new Date(date+'T12:00:00Z');if(Number.isNaN(d.valueOf())||d.toISOString().slice(0,10)!==date||date<new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Maputo'}))bad('Data inválida ou passada');
- const o={ref:ref('RES'),at:new Date().toISOString(),court,date,time,cn:cut(b.cn),cp:cut(b.cp),st:'Pendente'};
- try{await pool.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[o.ref,court,date,time,o.st,JSON.stringify(o)]);}catch(e){if(e.code==='23505')bad('Este horário já está reservado',409);throw e;}return o;
+ const date=cut(b.date,10),time=cut(b.time,5),pm=cut(b.pm,10),bi=cut(b.bi,30),name=cut(b.cn,160),wallet=cut(b.wallet,24);
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!times.includes(time)||!name.includes(' ')||name.length<3||!/^[\p{L}\p{N}/. -]{5,30}$/u.test(bi))bad('Data, hora, nome ou B.I. inválidos');
+ if(!['card','emola','mpesa'].includes(pm))bad('Escolhe um método de pagamento válido');
+ if(pm!=='card'&&!phoneValid(wallet,pm))bad(pm==='emola'?'e-Mola exige +25886 ou +25887.':'M-Pesa exige +25884 ou +25885.');
+ const d=new Date(date+'T12:00:00Z');
+ const today=new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Maputo'});
+ if(Number.isNaN(d.valueOf())||d.toISOString().slice(0,10)!==date||date<today)bad('Data inválida ou passada');
+ // Se todos os campos estiverem ocupados, a reserva não é criada.
+ // ON CONFLICT DO NOTHING respeita o índice único parcial e protege contra simultaneidade.
+ for(const court of courts){
+  const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,cn:name,bi,cp:pm==='card'?'':normalizePhone(wallet),pm,wallet:pm==='card'?'':normalizePhone(wallet),duration:60,price:bookingPrice,pay:'Pagamento simulado',payAuto:true,st:'Pendente'};
+  const result=await pool.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT DO NOTHING RETURNING ref',[item.ref,court,date,time,item.st,JSON.stringify(item)]);
+  if(result.rowCount)return item;
+ }
+ bad('Todos os quatro campos estão ocupados neste horário. Escolhe outra hora.',409);
 }
 async function submitMessage(b){if(!cut(b.n)||!cut(b.m)||!/^\S+@\S+\.\S+$/.test(cut(b.e)))bad('Dados da mensagem inválidos');const o={ref:ref('MSG'),at:new Date().toISOString(),n:cut(b.n),e:cut(b.e,220),m:cut(b.m,2000),rd:false};await pool.query('INSERT INTO ipz_messages(ref,data) VALUES($1,$2::jsonb)',[o.ref,JSON.stringify(o)]);return o;}
 async function modifyRecord(c,payload){return tx(async db=>{
@@ -180,7 +195,7 @@ async function excel45Days(res){
  summary.getCell(7,2).numFmt='#,##0.00 "MT"';
  const date=x=>x?new Date(x).toISOString().replace('T',' ').slice(0,16):'';
  const so=sheet('Compras',['Referência','Criada em (UTC)','Cliente','Telefone','Email','Estado','Pagamento','Método','Entrega','Endereço','Total MT','Itens'],O.map(x=>[x.ref,date(x.at),x.cn,x.cp,x.ce,x.st,x.pay,x.pm,x.dl,x.a,Number(x.total)||0,(x.items||[]).map(i=>`${i.q}x ${i.n}${i.sz?' ['+i.sz+']':''}`).join('; ')]),[22,22,26,18,30,20,22,14,16,32,17,65]);so.getColumn(11).numFmt='#,##0.00 "MT"';
- sheet('Reservas',['Referência','Criada em (UTC)','Campo','Data reservada','Hora','Cliente','Telefone','Estado'],B.map(x=>[x.ref,date(x.at),x.court,x.date,x.time,x.cn,x.cp,x.st]),[24,23,18,20,13,28,18,18]);
+ sheet('Reservas',['Referência','Criada em (UTC)','Campo','Data reservada','Hora','Cliente','B.I.','Pagamento','Telefone / carteira','Preço (MT)','Estado'],B.map(x=>[x.ref,date(x.at),x.court,x.date,x.time,x.cn,x.bi||'',x.pm||'',x.cp||'',Number(x.price)||0,x.st]),[24,23,18,20,13,28,24,18,23,17,18]);
  sheet('Mensagens',['Referência','Criada em (UTC)','Nome','Email','Mensagem','Lida'],M.map(x=>[x.ref,date(x.at),x.n,x.e,x.m,x.rd?'Sim':'Não']),[24,23,28,35,70,14]);
  const sp=sheet('Produtos',['ID','Nome','Categoria','Preço MT','Stock','Publicado','Imagens'],P.map(x=>[x.id,x.n,['Raquetes','Sapatilhas','Vestuário','Bolas','Mochilas e Sacos','Acessórios'][x.c]||'',Number(x.p)||0,Number(x.s)||0,x.pub!==false?'Sim':'Não',(x.images||[]).length]),[22,47,26,20,16,16,15]);sp.getColumn(4).numFmt='#,##0.00 "MT"';
  const days=new Map();for(let i=44;i>=0;i--){const d=new Date(Date.UTC(until.getUTCFullYear(),until.getUTCMonth(),until.getUTCDate()-i));days.set(d.toISOString().slice(0,10),{orders:0,bookings:0,messages:0,revenue:0})}
@@ -198,9 +213,11 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(m!=='GET'&&!sameOrigin(req))return error(res,403,'Origem não autorizada');
   if(r==='/api/availability'&&m==='GET'){
    const date=u.searchParams.get('date')||'',court=u.searchParams.get('court')||'';
-   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!courts.includes(court))return error(res,400,'Data ou campo inválido');
-   const rows=await pool.query("SELECT booking_time FROM ipz_bookings WHERE court=$1 AND booking_date=$2 AND status <> 'Cancelada'",[court,date]);
-   return json(res,200,{occupied:rows.rows.map(x=>x.booking_time)});
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||(court&&!courts.includes(court)))return error(res,400,'Data ou campo inválido');
+   const rows=await pool.query("SELECT court,booking_time FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date]);
+   if(court)return json(res,200,{occupied:rows.rows.filter(x=>x.court===court).map(x=>x.booking_time)});
+   const available=Object.fromEntries(times.map(t=>[t,courts.length-rows.rows.filter(x=>x.booking_time===t).length]));
+   return json(res,200,{available,times,price:bookingPrice,duration:60});
   }
   if(r==='/api/session'&&m==='GET'){const s=await session(req);return json(res,200,{admin:!!s,role:s?.role||null,email:s?.email||null,online:true});}
   if(r==='/api/login'&&m==='POST'){
