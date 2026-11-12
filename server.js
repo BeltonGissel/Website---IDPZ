@@ -62,7 +62,8 @@ async function boot(){
  CREATE TABLE IF NOT EXISTS ipz_messages (ref TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS ipz_sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, role TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);
  CREATE TABLE IF NOT EXISTS ipz_gallery (id TEXT PRIMARY KEY, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
- CREATE TABLE IF NOT EXISTS ipz_tournaments (id TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
+ CREATE TABLE IF NOT EXISTS ipz_tournaments (id TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ CREATE TABLE IF NOT EXISTS ipz_tournament_photos (id TEXT PRIMARY KEY, tournament_id TEXT NOT NULL REFERENCES ipz_tournaments(id) ON DELETE CASCADE, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
  // Migração idempotente de categorias antigas (0-5) para o catálogo v2 (0-9).
  // Só converte artigos sem categoryVersion; preserva preços, imagens, stock e vendas.
  await pool.query(`UPDATE ipz_products
@@ -265,6 +266,22 @@ function drawMatches(names){
 }
 async function galleryList(){const q=await pool.query('SELECT id,caption,created_at FROM ipz_gallery ORDER BY created_at DESC LIMIT 150');return q.rows.map(x=>({...x,url:'/api/gallery/image/'+x.id}));}
 async function tournamentList(admin=false){const q=await pool.query('SELECT id,data FROM ipz_tournaments ORDER BY (data->>\'date\') DESC LIMIT 300');return q.rows.filter(x=>admin||['Publicado','Concluído'].includes(x.data.status)).map(x=>({id:x.id,...x.data}));}
+async function publicTournament(id){
+ const q=await pool.query('SELECT id,data FROM ipz_tournaments WHERE id=$1',[id]);
+ if(!q.rows.length||!['Publicado','Concluído'].includes(q.rows[0].data.status))return null;
+ const item={id:q.rows[0].id,...q.rows[0].data};
+ const photos=await pool.query('SELECT id,caption FROM ipz_tournament_photos WHERE tournament_id=$1 ORDER BY created_at DESC LIMIT 80',[id]);
+ return {...item,photos:photos.rows.map(x=>({...x,url:'/api/tournaments/photo/'+x.id}))};
+}
+function cleanRanking(items, participants){
+ if(!Array.isArray(items)||items.length>128)bad('Ranking inválido');
+ const roster=new Set((participants||[]).map(v=>v.toLocaleLowerCase('pt'))),seen=new Set(),places=new Set();
+ return items.map(x=>{
+  const name=cut(x.name,80),position=Number(x.position),points=Number(x.points||0),wins=Number(x.wins||0);
+  if(!roster.has(name.toLocaleLowerCase('pt'))||seen.has(name.toLocaleLowerCase('pt'))||!Number.isInteger(position)||position<1||position>128||places.has(position)||!Number.isInteger(points)||points<0||points>100000||!Number.isInteger(wins)||wins<0||wins>1000)bad('Ranking inválido: verifica os nomes, posições, pontos e vitórias.');
+  seen.add(name.toLocaleLowerCase('pt'));places.add(position);return {name,position,points,wins};
+ }).sort((a,b)=>a.position-b.position);
+}
 // pay.co.mz: cartão com checkout alojado. Sem credenciais não há cobrança.
 const cardConfig=()=>!!(process.env.PAY_API_KEY&&process.env.PAY_MERCHANT_ID&&process.env.PAY_WALLET_ID);
 async function cardStart(kind,id){
@@ -315,6 +332,18 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'X-Content-Type-Options':'nosniff','Cache-Control':'public,max-age=600'});return res.end(bytes);
   }
   if(r==='/api/tournaments'&&m==='GET')return json(res,200,{items:await tournamentList()});
+  const tournamentPhoto=r.match(/^\/api\/tournaments\/photo\/([A-Za-z0-9_-]+)$/);
+  if(tournamentPhoto&&m==='GET'){
+   const q=await pool.query(`SELECT p.image FROM ipz_tournament_photos p JOIN ipz_tournaments t ON t.id=p.tournament_id WHERE p.id=$1 AND t.data->>'status' IN ('Publicado','Concluído')`,[tournamentPhoto[1]]);
+   const uri=q.rows[0]?.image;if(!uri)return error(res,404,'Imagem não encontrada');
+   const type=uri.slice(5,uri.indexOf(';')),bytes=Buffer.from(uri.split(',')[1],'base64');
+   res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'public,max-age=600','X-Content-Type-Options':'nosniff'});return res.end(bytes);
+  }
+  const tournamentDetail=r.match(/^\/api\/tournaments\/([A-Za-z0-9_-]+)$/);
+  if(tournamentDetail&&m==='GET'){
+   const item=await publicTournament(tournamentDetail[1]);return item?json(res,200,{item}):error(res,404,'Torneio não encontrado');
+  }
+
   if(r==='/api/tournaments'&&m==='POST'){
     limitCommunity(req);
     const v=tournamentBody(await parse(req),false),id=ref('TOR');
@@ -372,6 +401,39 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
     if(s.role!=='admin')return error(res,403,'Apenas Admin');const id=r.split('/').pop();await pool.query('DELETE FROM ipz_gallery WHERE id=$1',[id]);return json(res,200,{ok:true});
   }
   if(r==='/api/admin/tournaments'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin');return json(res,200,{items:await tournamentList(true)});}
+  const adminPhoto=r.match(/^\/api\/admin\/tournaments\/photo\/([A-Za-z0-9_-]+)$/);
+  if(adminPhoto&&m==='GET'){
+   if(s.role!=='admin')return error(res,403,'Apenas Admin');const q=await pool.query('SELECT image FROM ipz_tournament_photos WHERE id=$1',[adminPhoto[1]]),uri=q.rows[0]?.image;if(!uri)return error(res,404,'Imagem não encontrada');
+   const type=uri.slice(5,uri.indexOf(';')),bytes=Buffer.from(uri.split(',')[1],'base64');res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff'});return res.end(bytes);
+  }
+  const rankingRoute=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/ranking$/);
+  if(rankingRoute&&m==='PUT'){
+   if(s.role!=='admin')return error(res,403,'Apenas Admin');const id=rankingRoute[1],b=await parse(req);
+   const q=await pool.query('SELECT data FROM ipz_tournaments WHERE id=$1',[id]);if(!q.rows.length)return error(res,404,'Torneio inexistente');
+   const ranking=cleanRanking(b.ranking,q.rows[0].data.participants);
+   await pool.query("UPDATE ipz_tournaments SET data=jsonb_set(data,'{ranking}',$2::jsonb) WHERE id=$1",[id,JSON.stringify(ranking)]);
+   return json(res,200,{ok:true,ranking});
+  }
+  const photosRoute=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/photos$/);
+  if(photosRoute&&m==='GET'){
+   if(s.role!=='admin')return error(res,403,'Apenas Admin');const q=await pool.query('SELECT id,caption FROM ipz_tournament_photos WHERE tournament_id=$1 ORDER BY created_at DESC',[photosRoute[1]]);
+   return json(res,200,{items:q.rows.map(x=>({...x,url:'/api/admin/tournaments/photo/'+x.id}))});
+  }
+  if(photosRoute&&m==='POST'){
+   if(s.role!=='admin')return error(res,403,'Apenas Admin');const b=await parse(req,400000),id=ref('TFOTO');
+   const q=await pool.query('SELECT id FROM ipz_tournaments WHERE id=$1',[photosRoute[1]]);if(!q.rows.length)return error(res,404,'Torneio inexistente');
+   const caption=cut(b.caption,160)||'Fotografia do torneio';
+   const n=await pool.query('SELECT count(*)::int AS n FROM ipz_tournament_photos WHERE tournament_id=$1',[photosRoute[1]]);
+   if(n.rows[0].n>=80)return error(res,409,'Limite de 80 fotografias por torneio');
+   await pool.query('INSERT INTO ipz_tournament_photos(id,tournament_id,caption,image) VALUES($1,$2,$3,$4)',[id,photosRoute[1],caption,galleryImage(b.image)]);
+   return json(res,201,{ok:true,id});
+  }
+  const deletePhoto=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/photos\/([A-Za-z0-9_-]+)$/);
+  if(deletePhoto&&m==='DELETE'){
+   if(s.role!=='admin')return error(res,403,'Apenas Admin');await pool.query('DELETE FROM ipz_tournament_photos WHERE tournament_id=$1 AND id=$2',[deletePhoto[1],deletePhoto[2]]);
+   return json(res,200,{ok:true});
+  }
+
   if(r==='/api/admin/tournaments'&&m==='POST'){
     if(s.role!=='admin')return error(res,403,'Apenas Admin');const v=tournamentBody(await parse(req),true),id=ref('TOR');
     await pool.query('INSERT INTO ipz_tournaments(id,data) VALUES($1,$2::jsonb)',[id,JSON.stringify({...v,organizer:v.name,status:'Publicado',draw:[],createdAt:new Date().toISOString()})]);return json(res,201,{ok:true,id});
@@ -389,7 +451,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
     }else if(b.action==='roster'){
        const participants=Array.isArray(b.participants)?b.participants.map(x=>cut(x,80)).filter(Boolean):[];
        if(participants.length>data.capacity||new Set(participants.map(x=>x.toLowerCase())).size!==participants.length)bad('Lista inválida ou nomes repetidos.');
-       data={...data,participants,draw:[]};
+       data={...data,participants,draw:[],ranking:[]};
     } else bad('Operação inválida');
     await pool.query('UPDATE ipz_tournaments SET data=$2::jsonb WHERE id=$1',[id,JSON.stringify(data)]);return json(res,200,{ok:true});
   }
