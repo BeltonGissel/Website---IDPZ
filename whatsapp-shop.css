@@ -3,3 +3,40 @@
 .ipz-wa-send{display:flex!important;justify-content:center;align-items:center;gap:10px;background:#25d366!important;color:#08210f!important;font-weight:800!important;text-align:center;border:1px solid #1b9847!important;text-decoration:none!important;min-height:54px;border-radius:999px}
 .ipz-wa-send:hover{filter:brightness(1.04);transform:translateY(-2px)}
 @media(max-width:640px){.ipz-wa-send{width:100%}}
+
+
+/* V19 · Ícones SVG reais para evitar os botões em branco no Brave e no modo escuro */
+body:not(.adm) .qt { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-top:10px; }
+body:not(.adm) .qt button[data-cq], body:not(.adm) .qt button[data-q] {
+  appearance:none !important; -webkit-appearance:none !important;
+  box-sizing:border-box !important; display:inline-flex !important; align-items:center !important;
+  justify-content:center !important; flex:0 0 40px !important; width:40px !important;
+  min-width:40px !important; height:40px !important; padding:0 !important;
+  border:1px solid #a7bac0 !important; border-radius:50% !important;
+  background:#f0f5f5 !important; color:#13272d !important;
+  cursor:pointer !important; box-shadow:0 2px 8px rgba(0,0,0,.12);
+  transition:background .18s ease, transform .18s ease, box-shadow .18s ease !important;
+}
+body:not(.adm) .qt button[data-cq] svg, body:not(.adm) .qt button[data-q] svg {
+ display:block !important; width:20px !important; height:20px !important;
+ stroke:currentColor !important; color:inherit !important; opacity:1 !important;
+ fill:none !important; visibility:visible !important; pointer-events:none;
+}
+body:not(.adm) .qt button[data-cq]:hover, body:not(.adm) .qt button[data-q]:hover {
+ background:#cff902 !important; border-color:#cff902 !important; transform:translateY(-2px);
+}
+body:not(.adm) .qt button[data-cq]:active, body:not(.adm) .qt button[data-q]:active { transform:scale(.95); }
+body:not(.adm) .qt button[data-cq]:focus-visible, body:not(.adm) .qt button[data-q]:focus-visible {
+ outline:3px solid #cff902 !important; outline-offset:3px;
+}
+body:not(.adm) .qt > span { min-width:20px; text-align:center; font-variant-numeric:tabular-nums; font-weight:700; }
+body:not(.adm) .qt .lk { color:#cff902 !important; text-decoration:underline; text-underline-offset:4px; }
+@media (prefers-color-scheme:light) {
+ body:not(.adm) .qt button[data-cq], body:not(.adm) .qt button[data-q] {
+  background:#f6f9f9 !important; color:#13272d !important; border-color:#b8c4c6 !important;
+ }
+ body:not(.adm) .qt .lk { color:#146b8b !important; }
+}
+@media (prefers-reduced-motion:reduce) {
+ body:not(.adm) .qt button[data-cq],body:not(.adm) .qt button[data-q] { transition:none !important; }
+}
