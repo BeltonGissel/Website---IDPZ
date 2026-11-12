@@ -117,41 +117,16 @@ async function getDoc(c,id){if(c==='products'){let r=await pool.query('SELECT da
  const docs=await snapshot(c);return docs[0].data;}
 async function tx(fn){const c=await pool.connect();try{await c.query('BEGIN');const out=await fn(c);await c.query('COMMIT');return out;}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
 function bad(m,status=400){const e=new Error(m);e.status=status;throw e;}
-async function submitOrder(b){return tx(async db=>{
- const input=Array.isArray(b.items)?b.items:[];
- if(!input.length||input.length>30)bad('Carrinho inválido');
- const quantities=new Map(),sizes=new Map();
- for(const i of input){let id=cut(i.id,40),q=Number(i.q);if(!/^[\w-]{2,40}$/.test(id)||!Number.isInteger(q)||q<1||q>100)bad('Quantidade inválida');quantities.set(id,(quantities.get(id)||0)+q);sizes.set(id+'|'+cut(i.sz,10),{id,sz:cut(i.sz,10),q:(sizes.get(id+'|'+cut(i.sz,10))?.q||0)+q});}
- if(!cut(b.cn)||!phoneValid(b.cp)||!/^\S+@\S+\.\S+$/.test(cut(b.ce)))bad('Dados de contacto inválidos');
-  if(!['card','emola','mpesa'].includes(b.pm))bad('Método de pagamento inválido');
-  if(b.pm!=='card'&&!phoneValid(b.w,b.pm))bad('Número de pagamento incompatível com a operadora');
-  if(b.pm==='card'&&!cardConfig())bad('Pagamento por cartão indisponível. Selecciona outra forma de pagamento.',503);
- if(b.dl==='del'&&!cut(b.a))bad('Indica o endereço de entrega');
- // Bloqueio determinístico de linhas evita venda acima do stock em compras simultâneas.
- const products=new Map();for(const id of [...quantities.keys()].sort()){
-  const r=await db.query('SELECT data FROM ipz_products WHERE id=$1 FOR UPDATE',[id]);if(!r.rows.length)bad('Produto não encontrado',404);
-  const p=r.rows[0].data,q=quantities.get(id);if(p.pub===false||!Number.isFinite(p.p)||!Number.isInteger(p.s)||q>p.s)bad('Stock insuficiente para '+p.n,409);products.set(id,p);
- }
- const normalized=[...sizes.values()].map(i=>{const p=products.get(i.id);return{id:i.id,n:p.n,sz:i.sz,q:i.q,u:p.p,t:p.p*i.q};});
- const total=normalized.reduce((v,i)=>v+i.t,0);
- const o={ref:ref('PED'),at:new Date().toISOString(),cn:cut(b.cn),cp:normalizePhone(b.cp),ce:cut(b.ce,220),co:cut(b.co,500),pm:b.pm,w:b.pm==='card'?'':normalizePhone(b.w),dl:b.dl==='del'?'del':'pick',a:cut(b.a,250),total,pay:b.pm==='card'?'Aguardando pagamento bancário':'Pago (simulado)',payAuto:b.pm!=='card',st:'Por processar',ap:true,items:normalized};
- for(const [id,q] of quantities){const p=products.get(id);await db.query('UPDATE ipz_products SET data=$2::jsonb WHERE id=$1',[id,JSON.stringify({...p,s:p.s-q})]);}
- await db.query('INSERT INTO ipz_orders(ref,data) VALUES($1,$2::jsonb)',[o.ref,JSON.stringify(o)]);
- return o;
-});}
+// Compras directas removidas: os carrinhos seguem exclusivamente para o WhatsApp.
 function hoursValue(time){return Number(String(time||'').slice(0,2));}
 function bookingInterval(record){const start=hoursValue(record.time);const duration=Number(record.duration)||60;const end=record.endTime?hoursValue(record.endTime):start+Math.ceil(duration/60);return {start,end};}
 function bookingOverlaps(other,start,end){const r=bookingInterval(other);return start<r.end&&end>r.start;}
 async function submitBooking(b){
- const court=cut(b.court,30),date=cut(b.date,10),time=cut(b.time,5),endTime=cut(b.endTime,5),pm=cut(b.pm,10),bi=cut(b.bi,30),name=cut(b.cn,160),wallet=cut(b.wallet,24),phone=cut(b.cp,24);
+ const court=cut(b.court,30),date=cut(b.date,10),time=cut(b.time,5),endTime=cut(b.endTime,5),bi=cut(b.bi,30),name=cut(b.cn,160),phone=cut(b.cp,24);
  const from=hoursValue(time),to=hoursValue(endTime),duration=(to-from)*60;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d\d:00$/.test(time)||!/^\d\d:00$/.test(endTime)||from<6||from>=23||to>23||to<=from||!name.includes(' ')||name.length<3||!/[\p{L}]/u.test(name)||!/^[\p{L}\p{N}/. -]{5,30}$/u.test(bi))bad('Data, horário, nome ou B.I. inválidos');
  if(!courts.includes(court))bad('Selecciona um dos quatro campos disponíveis.');
  if(!phoneValid(phone))bad('Indica um contacto moçambicano válido.');
- if(!['card','emola','mpesa'].includes(pm))bad('Escolhe um método de pagamento válido');
- if(pm!=='card'&&!phoneValid(wallet,pm))bad(pm==='emola'?'e-Mola exige +25886 ou +25887.':'M-Pesa exige +25884 ou +25885.');
- if(pm==='card'&&!cardConfig())bad('Pagamento por cartão indisponível. Escolhe outro método.',503);
- if(pm==='card'&&!validateEmail(cut(b.ce,160)))bad('Indica um email válido para o pagamento bancário.');
  const d=new Date(date+'T12:00:00Z'),today=new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Maputo'});
  if(Number.isNaN(d.valueOf())||d.toISOString().slice(0,10)!==date||date<today)bad('Data inválida ou passada');
  if(Date.parse(date+'T00:00:00Z')-Date.parse(today+'T00:00:00Z')>44*86400000)bad('As marcações estão disponíveis até 45 dias.');
@@ -161,7 +136,7 @@ async function submitBooking(b){
    const entries=(await db.query("SELECT court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date])).rows;
    if(entries.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},from,to)))bad('O campo seleccionado já está ocupado neste período.',409);
    {
-     const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,endTime,cn:name,ce:pm==='card'?cut(b.ce,160):'',bi,cp:normalizePhone(phone),pm,wallet:pm==='card'?'':normalizePhone(wallet),duration,price:(duration/60)*bookingPrice,pay:pm==='card'?'Aguardando pagamento bancário':'Pagamento simulado',payAuto:pm!=='card',st:'Pendente'};
+     const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,endTime,cn:name,bi,cp:normalizePhone(phone),channel:'whatsapp',contactWhatsApp:'+258 87 738 8644',duration,price:(duration/60)*bookingPrice,pay:'A combinar pelo WhatsApp',payAuto:false,st:'Pendente'};
      await db.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[item.ref,court,date,time,item.st,JSON.stringify(item)]);
      return item;
    }
@@ -251,7 +226,7 @@ async function excel45Days(res){
   return ws;
  }
  const period='De '+start.toISOString().slice(0,10)+' até '+until.toISOString().slice(0,10)+' (UTC)';
- const stats=[['Período de análise',period],['Compras registadas',O.length],['Compras activas',active.length],['Compras canceladas',O.length-active.length],['Valor de encomendas não canceladas (MT)',revenue],['Pagamentos bancários confirmados (MT)',O.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.total||0),0)+B.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.price||0),0)],['Reservas registadas',B.length],['Reservas pendentes',B.filter(x=>x.st==='Pendente').length],['Reservas confirmadas',B.filter(x=>x.st==='Confirmada').length],['Reservas canceladas',B.filter(x=>x.st==='Cancelada').length],['Mensagens recebidas',M.length],['Mensagens não lidas',M.filter(x=>!x.rd).length],['Produtos no catálogo (estado actual)',P.length],['Produtos publicados (estado actual)',P.filter(x=>x.pub!==false).length],['Produtos com stock baixo ≤ 3 (estado actual)',P.filter(x=>Number(x.s)<=3).length],['Torneios criados nos últimos 45 dias',T.length],['Fotografias da galeria (estado actual)',G.length]];
+ const stats=[['Período de análise',period],['Compras registadas',O.length],['Compras activas',active.length],['Compras canceladas',O.length-active.length],['Valor de encomendas não canceladas (MT)',revenue],['Histórico de pagamentos verificados (MT)',O.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.total||0),0)+B.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.price||0),0)],['Reservas registadas',B.length],['Reservas pendentes',B.filter(x=>x.st==='Pendente').length],['Reservas confirmadas',B.filter(x=>x.st==='Confirmada').length],['Reservas canceladas',B.filter(x=>x.st==='Cancelada').length],['Mensagens recebidas',M.length],['Mensagens não lidas',M.filter(x=>!x.rd).length],['Produtos no catálogo (estado actual)',P.length],['Produtos publicados (estado actual)',P.filter(x=>x.pub!==false).length],['Produtos com stock baixo ≤ 3 (estado actual)',P.filter(x=>Number(x.s)<=3).length],['Torneios criados nos últimos 45 dias',T.length],['Fotografias da galeria (estado actual)',G.length]];
  const summary=sheet('Resumo',['Indicador','Valor'],stats,[51,73]);summary.getColumn(2).alignment={vertical:'middle',wrapText:true};
  summary.getCell(7,2).numFmt='#,##0.00 "MT"';
  const date=x=>x?new Date(x).toISOString().replace('T',' ').slice(0,16):'';
@@ -310,43 +285,7 @@ function cleanRanking(items, participants){
   seen.add(name.toLocaleLowerCase('pt'));places.add(position);return {name,position,points,wins};
  }).sort((a,b)=>a.position-b.position);
 }
-// pay.co.mz: cartão com checkout alojado. Sem credenciais não há cobrança.
-const cardConfig=()=>!!(process.env.PAY_API_KEY&&process.env.PAY_MERCHANT_ID&&process.env.PAY_WALLET_ID);
-async function cardStart(kind,id){
- if(!cardConfig())bad('O pagamento por cartão ainda não foi activado pela Indoor Padel Zone.',503);
- const table=kind==='order'?'ipz_orders':kind==='booking'?'ipz_bookings':null;if(!table)bad('Tipo de pagamento inválido');
- const row=await pool.query(`SELECT data FROM ${table} WHERE ref=$1`,[id]);if(!row.rows.length)bad('Registo não encontrado',404);
- const record=row.rows[0].data;if(record.pm!=='card')bad('O método de pagamento não é cartão');
- if(record.pay==='Pago (confirmado)')bad('Pagamento já confirmado',409);
- if(record.checkoutUrl&&record.checkoutUrl.startsWith('https://pay.co.mz/checkout/'))return {checkout_url:record.checkoutUrl};
- const amount=kind==='order'?record.total:record.price;
- const resp=await fetch('https://pay.co.mz/api/public/v1/charges',{method:'POST',headers:{'Authorization':'Bearer '+process.env.PAY_API_KEY,'X-Merchant-Id':process.env.PAY_MERCHANT_ID,'X-Wallet-Id':process.env.PAY_WALLET_ID,'Idempotency-Key':id,'Content-Type':'application/json'},body:JSON.stringify({method:'card',amount,customer_name:record.cn,customer_contact:record.ce||record.cp}),signal:AbortSignal.timeout(12000)});
- const payload=await resp.json();const checkout=payload?.data?.checkout_url;
- if(!resp.ok||typeof checkout!=='string'||!/^https:\/\/pay\.co\.mz\/checkout\//.test(checkout))bad('Não foi possível iniciar o pagamento bancário. Tenta novamente.',502);
- const updated={...record,checkoutUrl:checkout,paymentReference:payload.data.reference,pay:'Aguardando pagamento bancário',payAuto:false};
- await pool.query(`UPDATE ${table} SET data=$2::jsonb WHERE ref=$1`,[id,JSON.stringify(updated)]);
- return {checkout_url:checkout};
-}
-// Consulta servidor-a-servidor (não aceita status fornecido pelo navegador).
-async function reconcileCard(kind,id){
- if(!cardConfig())bad('Gateway não configurado',503);
- const table=kind==='order'?'ipz_orders':kind==='booking'?'ipz_bookings':null;if(!table)bad('Tipo inválido');
- const row=await pool.query(`SELECT data FROM ${table} WHERE ref=$1`,[id]);if(!row.rows.length)bad('Registo inexistente',404);
- const record=row.rows[0].data;if(!record.paymentReference)bad('Pagamento ainda não iniciado',409);
- const response=await fetch('https://pay.co.mz/api/public/v1/charges?limit=100',{headers:{Authorization:'Bearer '+process.env.PAY_API_KEY,'X-Merchant-Id':process.env.PAY_MERCHANT_ID,'X-Wallet-Id':process.env.PAY_WALLET_ID},signal:AbortSignal.timeout(10000)});
- if(!response.ok)bad('Não foi possível consultar o prestador',502);const data=await response.json();
- const charge=(Array.isArray(data.data)?data.data:[]).find(x=>x.reference===record.paymentReference);
- if(!charge)return {status:'pendente',verified:false,note:'Transacção não encontrada nas últimas 100 cobranças; requer reconciliação manual.'};
- const expected=kind==='order'?record.total:record.price;
- if(Number(charge.amount)!==Number(expected)||charge.method!=='card')bad('Divergência de pagamento. Contacta a administração.',409);
- const verified=['paid','completed','success','successful'].includes(String(charge.status||charge.state).toLowerCase());
- if(verified&&record.pay!=='Pago (confirmado)'){
-  const updated={...record,pay:'Pago (confirmado)',payAuto:false,paymentVerifiedAt:new Date().toISOString()};
-  await pool.query(`UPDATE ${table} SET data=$2::jsonb WHERE ref=$1`,[id,JSON.stringify(updated)]);
- }
- return {status:charge.status||charge.state||'pending',verified};
-}
-
+// Não existem integrações de gateway de pagamento nesta versão.
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon'};
 async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.pathname,m=req.method;
  if(r==='/health'&&m==='GET')return json(res,200,{ok:true});
@@ -378,10 +317,6 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
     const data={...v,organizer:v.name,status:'A aguardar aprovação',createdAt:new Date().toISOString(),draw:v.participants.length>=2?drawMatches(v.participants):[]};
     await pool.query('INSERT INTO ipz_tournaments(id,data) VALUES($1,$2::jsonb)',[id,JSON.stringify(data)]);
     return json(res,201,{id,status:data.status,draw:data.draw});
-  }
-  if(r==='/api/payments/card/config'&&m==='GET')return json(res,200,{enabled:cardConfig(),provider:'pay.co.mz'});
-  if(r==='/api/payments/card/start'&&m==='POST'){
-    const input=await parse(req),result=await cardStart(cut(input.kind,10),cut(input.ref,100));return json(res,200,result);
   }
   if(r==='/api/availability'&&m==='GET'){
    const date=u.searchParams.get('date')||'',court=u.searchParams.get('court')||'',start=u.searchParams.get('start')||'',end=u.searchParams.get('end')||'';
@@ -415,7 +350,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(r==='/api/snapshot/products'&&m==='GET')return json(res,200,{docs:await snapshot('products')});
   if(r.startsWith('/api/submit/')&&m==='POST'){
    const c=r.split('/').pop(),b=await parse(req);let item;
-   if(c==='orders')item=await submitOrder(b);else if(c==='bookings')item=await submitBooking(b);else if(c==='messages')item=await submitMessage(b);else return error(res,404,'Rota inexistente');
+   if(c==='orders')return error(res,410,'Compras directas desactivadas. Envia o carrinho por WhatsApp.');else if(c==='bookings')item=await submitBooking(b);else if(c==='messages')item=await submitMessage(b);else return error(res,404,'Rota inexistente');
    return json(res,201,{ok:true,item});
   }
   const s=await session(req);if(!s)return error(res,401,'Inicia sessão para aceder ao painel');
@@ -485,26 +420,6 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   }
   if(r.startsWith('/api/admin/tournaments/')&&m==='DELETE'){
      if(s.role!=='admin')return error(res,403,'Apenas Admin');await pool.query('DELETE FROM ipz_tournaments WHERE id=$1',[r.split('/').pop()]);return json(res,200,{ok:true});
-  }
-  if(r==='/api/admin/payments/status'&&m==='POST'){
-    if(s.role!=='admin')return error(res,403,'Apenas Administração pode alterar pagamentos');
-    const b=await parse(req),kind=cut(b.kind,12),id=cut(b.ref,100),action=cut(b.action,12);
-    const table=kind==='order'?'ipz_orders':kind==='booking'?'ipz_bookings':null;
-    if(!table||!['confirm','cancel'].includes(action)||!/^[A-Z]+-[A-Za-z0-9]+$/.test(id))return error(res,400,'Pedido inválido');
-    const updated=await tx(async db=>{
-      const result=await db.query(`SELECT data FROM ${table} WHERE ref=$1 FOR UPDATE`,[id]);if(!result.rows.length)bad('Pagamento inexistente',404);
-      const record=result.rows[0].data;
-      if(['Cancelado','Pagamento cancelado','Pago (confirmado)','Confirmado manualmente'].includes(record.pay))bad('Este pagamento já está finalizado.',409);
-      if(action==='confirm'&&record.pm==='card')bad('Cartões só podem ser confirmados pelo gateway.',403);
-      if(action==='confirm'&&!['emola','mpesa'].includes(record.pm))bad('Método de pagamento incompatível',400);
-      const next={...record,pay:action==='confirm'?'Confirmado manualmente':'Pagamento cancelado',paymentReviewedBy:s.email,paymentReviewedAt:new Date().toISOString(),payAuto:false};
-      await db.query(`UPDATE ${table} SET data=$2::jsonb WHERE ref=$1`,[id,JSON.stringify(next)]);
-      return next;
-    });
-    return json(res,200,{ok:true,pay:updated.pay});
-  }
-  if(r==='/api/admin/payments/reconcile'&&m==='POST'){
-    if(s.role!=='admin')return error(res,403,'Apenas Admin');const b=await parse(req);return json(res,200,await reconcileCard(cut(b.kind,10),cut(b.ref,100)));
   }
   if(r==='/api/admin/export-45-days'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode exportar o relatório');return excel45Days(res);}
   const sm=r.match(/^\/api\/snapshot\/(orders|bookings|messages|products)$/);
