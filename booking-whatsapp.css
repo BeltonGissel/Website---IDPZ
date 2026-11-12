@@ -1,0 +1,7 @@
+/* Reserva via WhatsApp: mantém layout e sistema claro/escuro existentes */
+.ipz-wa-booking-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:22px 0}
+.ipz-wa-booking-summary p{margin:0;padding:16px;border:1px solid var(--bd,rgba(150,170,170,.22));border-radius:15px;background:rgba(140,160,160,.07);line-height:1.55}
+.ipz-wa-booking-summary b{display:block;font-size:.78rem;margin-bottom:5px;opacity:.76}
+.ipz-wa-booking-notice{padding:18px 20px;border:1px solid rgba(207,249,2,.4);border-radius:16px;background:rgba(207,249,2,.08);line-height:1.6;margin:20px 0 10px}
+.ipz-wa-reservation-btn{display:inline-flex;align-items:center;justify-content:center;margin:20px 0;background:#cff902!important;color:#101e29!important;text-decoration:none!important;min-height:50px}
+@media(max-width:700px){.ipz-wa-booking-summary{grid-template-columns:1fr}}
