@@ -1,0 +1,6 @@
+/* Indoor Padel Zone: troca de logótipo conforme o tema do sistema. */
+.ipz-theme-logo { display: contents; }
+@media (prefers-color-scheme: dark) {
+  /* O logótipo branco enviado pelo cliente não deve ter um fundo branco no footer. */
+  .ipz-theme-logo .fp { background: transparent; }
+}
