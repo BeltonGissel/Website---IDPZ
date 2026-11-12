@@ -1,0 +1,5 @@
+/* Carrinho → WhatsApp · V18 */
+.ipz-wa-note{margin:18px 0 15px;line-height:1.6;font-size:.88rem;color:var(--mut,#64748b)}
+.ipz-wa-send{display:flex!important;justify-content:center;align-items:center;gap:10px;background:#25d366!important;color:#08210f!important;font-weight:800!important;text-align:center;border:1px solid #1b9847!important;text-decoration:none!important;min-height:54px;border-radius:999px}
+.ipz-wa-send:hover{filter:brightness(1.04);transform:translateY(-2px)}
+@media(max-width:640px){.ipz-wa-send{width:100%}}
