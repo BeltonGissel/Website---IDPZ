@@ -248,3 +248,10 @@ Os ficheiros `animations.css` e `animations.js` estão na raiz. O `index.html` r
 ## V8 — Refinamento visual do formulário de reservas
 
 Apenas `booking-v7.css` foi alterado. Foram corrigidos os contrastes, alinhamentos, campos agrupados, cartões de pagamento, hierarquia tipográfica, botões, espaçamento do cabeçalho fixo e responsividade. Usa o mesmo HTML, JavaScript e API do V7. Não altera o painel Admin.
+
+
+## V11 — Header compacto e navegação
+
+O header do website público foi reduzido e apresenta, pela ordem: **Home**, **Sobre Nós**, **Galeria**, **Nossa Loja**, **Nossos Torneios**, **Contactos**, **Reservar Campo**. Em ecrãs até 1120 px, os links secundários passam para o menu responsivo, preservando o acesso imediato à reserva.
+
+Esta actualização modifica apenas `index.html` e `redesign.css`. Não altera as rotas, o servidor, o Neon, os formulários nem os painéis de gestão. No GitHub, os ficheiros continuam directamente na raiz.
