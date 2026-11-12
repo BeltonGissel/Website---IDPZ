@@ -22,11 +22,35 @@ function renderTournamentDetail(id){
  api('/api/tournaments/'+encodeURIComponent(id)).then(({item:t})=>{
   const ranking=Array.isArray(t.ranking)?[...t.ranking].sort((a,b)=>a.position-b.position):[];
   const photos=t.photos||[];
-  el.innerHTML=`<a class="ipz-back-link" href="#torneios">← Voltar aos torneios</a>
-  <div class="ipz-tournament-hero"><span class="ipz-com-eyebrow">TORNEIO · ${esc(t.status)} · ${safeDate(t.date)}${t.demo?' · DEMONSTRAÇÃO':''}</span><h1>${esc(t.title)}</h1>${t.demo?'<p><strong>Conteúdo de demonstração: participantes, resultados e imagens são fictícios.</strong></p>':''}<p>${(t.participants||[]).length} participantes · ${safeDate(t.date)}</p></div>
-  <div class="ipz-tournament-detail-grid"><section class="ipz-tournament-panel"><h2>Participantes</h2>${(t.participants||[]).length?`<ol class="ipz-participant-list">${t.participants.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>`:'<p>Participantes ainda não publicados.</p>'}</section>
-  <section class="ipz-tournament-panel"><h2>Ranking final</h2>${ranking.length?`<div class="ipz-ranking-wrap"><table class="ipz-ranking"><thead><tr><th>Posição</th><th>Participante</th><th>Vitórias</th><th>Pontos</th></tr></thead><tbody>${ranking.map(r=>`<tr><td>${Number(r.position)}º</td><td>${esc(r.name)}</td><td>${Number(r.wins)}</td><td>${Number(r.points)}</td></tr>`).join('')}</tbody></table></div>`:'<p>O ranking ainda não foi publicado pela organização.</p>'}</section></div>
-  <section class="ipz-tournament-gallery"><h2>Galeria do torneio</h2>${photos.length?`<div class="ipz-com-grid">${photos.map(photo=>`<figure class="ipz-com-card"><img loading="lazy" src="${esc(photo.url)}" alt="${esc(photo.caption)}"><figcaption class="ipz-pad">${esc(photo.caption)}</figcaption></figure>`).join('')}</div>`:'<div class="ipz-com-notice">Ainda não foram publicadas fotografias deste torneio.</div>'}</section>`;
+  const participants=Array.isArray(t.participants)?t.participants:[];
+  const desc=t.description||`Consulta os resultados, a classificação final e os melhores momentos deste torneio da Indoor Padel Zone.`;
+  el.innerHTML=`<article class="ipz-tour-layout" aria-label="Detalhes do torneio">
+    <nav class="ipz-tour-topnav" aria-label="Navegação do torneio">
+      <a href="#torneios" class="ipz-tour-back">← Torneios</a>
+      <span class="ipz-tour-menu-label">MENU</span>
+      <div class="ipz-tour-menu-links"><a href="#ipz-tour-info">Informações</a><a href="#ipz-tour-ranking">Ranking</a><a href="#ipz-tour-gallery">Galeria</a></div>
+    </nav>
+    <div class="ipz-tour-columns">
+      <div class="ipz-tour-main" id="ipz-tour-info">
+        <div class="ipz-tour-intro">
+          <span class="ipz-com-eyebrow">${esc(t.status)} · ${safeDate(t.date)}${t.demo?' · EXEMPLO':''}</span>
+          <h1>${esc(t.title)}</h1>
+          <p class="ipz-tour-description">${esc(desc)}</p>
+          <p class="ipz-tour-metadata">${participants.length} participantes · ${safeDate(t.date)}</p>
+          ${t.demo?'<p class="ipz-tour-demo">Torneio de demonstração. Resultados e imagens ilustrativos.</p>':''}
+        </div>
+        <section class="ipz-tour-ranking" id="ipz-tour-ranking" aria-labelledby="ipz-ranking-heading">
+          <div class="ipz-tour-section-heading"><span class="ipz-com-eyebrow">CLASSIFICAÇÃO</span><h2 id="ipz-ranking-heading">Ranking</h2></div>
+          ${ranking.length?`<div class="ipz-ranking-wrap"><table class="ipz-ranking"><thead><tr><th>Pos.</th><th>Participante</th><th>Vitórias</th><th>Pontos</th></tr></thead><tbody>${ranking.map(r=>`<tr><td>${Number(r.position)}º</td><td>${esc(r.name)}</td><td>${Number(r.wins)}</td><td>${Number(r.points)}</td></tr>`).join('')}</tbody></table></div>`:'<p>O ranking ainda não foi publicado.</p>'}
+          <details class="ipz-tour-participants"><summary>Ver participantes (${participants.length})</summary>${participants.length?`<ol class="ipz-participant-list">${participants.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>`:'<p>Participantes ainda não publicados.</p>'}</details>
+        </section>
+      </div>
+      <section class="ipz-tour-gallery" id="ipz-tour-gallery" aria-labelledby="ipz-gallery-heading">
+        <div class="ipz-tour-section-heading"><span class="ipz-com-eyebrow">MELHORES MOMENTOS</span><h2 id="ipz-gallery-heading">Galeria</h2></div>
+        ${photos.length?`<div class="ipz-tour-photo-grid">${photos.map((photo,i)=>`<figure class="ipz-tour-photo ${i===0?'ipz-tour-photo-featured':''}"><img loading="lazy" src="${esc(photo.url)}" alt="${esc(photo.caption||'Fotografia do torneio')}"><figcaption>${esc(photo.caption||'')}</figcaption></figure>`).join('')}</div>`:'<div class="ipz-tour-gallery-empty">As fotografias deste torneio ainda não foram publicadas.</div>'}
+      </section>
+    </div>
+  </article>`;
  }).catch(er=>notice(el,er.message));
 }
 function tournamentAdminExtras(t){
