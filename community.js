@@ -28,26 +28,35 @@ function renderTournamentDetail(id){
     <nav class="ipz-tour-topnav" aria-label="Navegação do torneio">
       <a href="#torneios" class="ipz-tour-back">← Torneios</a>
       <span class="ipz-tour-menu-label">MENU</span>
-      <div class="ipz-tour-menu-links"><a href="#ipz-tour-info">Informações</a><a href="#ipz-tour-ranking">Ranking</a><a href="#ipz-tour-gallery">Galeria</a></div>
+      <div class="ipz-tour-menu-links" role="tablist" aria-label="Secções do torneio">
+        <button type="button" class="ipz-tour-tab is-active" role="tab" id="ipz-tab-info" aria-controls="ipz-panel-info" aria-selected="true" tabindex="0" data-tour-tab="info">Informações</button>
+        <button type="button" class="ipz-tour-tab" role="tab" id="ipz-tab-ranking" aria-controls="ipz-panel-ranking" aria-selected="false" tabindex="-1" data-tour-tab="ranking">Ranking</button>
+        <button type="button" class="ipz-tour-tab" role="tab" id="ipz-tab-gallery" aria-controls="ipz-panel-gallery" aria-selected="false" tabindex="-1" data-tour-tab="gallery">Galeria</button>
+      </div>
     </nav>
-    <div class="ipz-tour-columns">
-      <div class="ipz-tour-main" id="ipz-tour-info">
+    <div class="ipz-tour-filter-content">
+      <section class="ipz-tour-panel" id="ipz-panel-info" role="tabpanel" aria-labelledby="ipz-tab-info" data-tour-panel="info">
         <div class="ipz-tour-intro">
           <span class="ipz-com-eyebrow">${esc(t.status)} · ${safeDate(t.date)}${t.demo?' · EXEMPLO':''}</span>
           <h1>${esc(t.title)}</h1>
           <p class="ipz-tour-description">${esc(desc)}</p>
           <p class="ipz-tour-metadata">${participants.length} participantes · ${safeDate(t.date)}</p>
           ${t.demo?'<p class="ipz-tour-demo">Torneio de demonstração. Resultados e imagens ilustrativos.</p>':''}
+          <h2 class="ipz-tour-subtitle">Participantes</h2>
+          ${participants.length?`<ol class="ipz-participant-list">${participants.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>`:'<p>Participantes ainda não publicados.</p>'}
         </div>
-        <section class="ipz-tour-ranking" id="ipz-tour-ranking" aria-labelledby="ipz-ranking-heading">
-          <div class="ipz-tour-section-heading"><span class="ipz-com-eyebrow">CLASSIFICAÇÃO</span><h2 id="ipz-ranking-heading">Ranking</h2></div>
+      </section>
+      <section class="ipz-tour-panel" id="ipz-panel-ranking" role="tabpanel" aria-labelledby="ipz-tab-ranking" data-tour-panel="ranking" hidden>
+        <div class="ipz-tour-ranking">
+          <div class="ipz-tour-section-heading"><span class="ipz-com-eyebrow">CLASSIFICAÇÃO</span><h2>Ranking · ${esc(t.title)}</h2></div>
           ${ranking.length?`<div class="ipz-ranking-wrap"><table class="ipz-ranking"><thead><tr><th>Pos.</th><th>Participante</th><th>Vitórias</th><th>Pontos</th></tr></thead><tbody>${ranking.map(r=>`<tr><td>${Number(r.position)}º</td><td>${esc(r.name)}</td><td>${Number(r.wins)}</td><td>${Number(r.points)}</td></tr>`).join('')}</tbody></table></div>`:'<p>O ranking ainda não foi publicado.</p>'}
-          <details class="ipz-tour-participants"><summary>Ver participantes (${participants.length})</summary>${participants.length?`<ol class="ipz-participant-list">${participants.map(n=>`<li>${esc(n)}</li>`).join('')}</ol>`:'<p>Participantes ainda não publicados.</p>'}</details>
-        </section>
-      </div>
-      <section class="ipz-tour-gallery" id="ipz-tour-gallery" aria-labelledby="ipz-gallery-heading">
-        <div class="ipz-tour-section-heading"><span class="ipz-com-eyebrow">MELHORES MOMENTOS</span><h2 id="ipz-gallery-heading">Galeria</h2></div>
-        ${photos.length?`<div class="ipz-tour-photo-grid">${photos.map((photo,i)=>`<figure class="ipz-tour-photo ${i===0?'ipz-tour-photo-featured':''}"><img loading="lazy" src="${esc(photo.url)}" alt="${esc(photo.caption||'Fotografia do torneio')}"><figcaption>${esc(photo.caption||'')}</figcaption></figure>`).join('')}</div>`:'<div class="ipz-tour-gallery-empty">As fotografias deste torneio ainda não foram publicadas.</div>'}
+        </div>
+      </section>
+      <section class="ipz-tour-panel" id="ipz-panel-gallery" role="tabpanel" aria-labelledby="ipz-tab-gallery" data-tour-panel="gallery" hidden>
+        <div class="ipz-tour-gallery">
+          <div class="ipz-tour-section-heading"><span class="ipz-com-eyebrow">MELHORES MOMENTOS</span><h2>Galeria · ${esc(t.title)}</h2></div>
+          ${photos.length?`<div class="ipz-tour-photo-grid">${photos.map((photo,i)=>`<figure class="ipz-tour-photo ${i===0?'ipz-tour-photo-featured':''}"><img loading="lazy" src="${esc(photo.url)}" alt="${esc(photo.caption||'Fotografia do torneio')}"><figcaption>${esc(photo.caption||'')}</figcaption></figure>`).join('')}</div>`:'<div class="ipz-tour-gallery-empty">As fotografias deste torneio ainda não foram publicadas.</div>'}
+        </div>
       </section>
     </div>
   </article>`;
@@ -79,7 +88,27 @@ document.addEventListener('submit',async e=>{if(e.target.matches('[data-tourname
  try{const fd=new FormData(form);await post('/api/admin/tournaments/'+encodeURIComponent(id)+'/photos',{caption:fd.get('caption'),image:await compress(fd.get('photo'))});form.reset();notice(form.querySelector('[role=status]'),'Fotografia adicionada.');await loadTournamentAdminPhotos(id);}
  catch(err){notice(form.querySelector('[role=status]'),err.message);}finally{button.disabled=false;}return;
 }if(e.target.id==='ipz-tournament-public')return submitTournament(e,false);if(e.target.id==='ipz-tournament-admin')return submitTournament(e,true);if(e.target.id==='ipz-gallery-upload'){e.preventDefault();const form=e.target,b=form.querySelector('button');b.disabled=true;try{const fd=new FormData(form),file=fd.get('photo');await post('/api/admin/gallery',{caption:fd.get('caption'),image:await compress(file)});adminGallery();}catch(err){notice(form.querySelector('[role=status]'),err.message);}finally{b.disabled=false;}}});
+function activateTournamentTab(tab,focus=false){
+ const layout=tab.closest('.ipz-tour-layout');if(!layout)return;
+ const target=tab.dataset.tourTab;
+ layout.querySelectorAll('[data-tour-tab]').forEach(button=>{
+  const active=button.dataset.tourTab===target;
+  button.classList.toggle('is-active',active);
+  button.setAttribute('aria-selected',String(active));
+  button.tabIndex=active?0:-1;
+ });
+ layout.querySelectorAll('[data-tour-panel]').forEach(panel=>{panel.hidden=panel.dataset.tourPanel!==target;});
+ if(focus)tab.focus();
+}
+document.addEventListener('keydown',e=>{
+ const tab=e.target.closest('[data-tour-tab]');if(!tab||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+ const tabs=[...tab.closest('[role="tablist"]').querySelectorAll('[data-tour-tab]')];
+ const i=tabs.indexOf(tab);let j=e.key==='Home'?0:e.key==='End'?tabs.length-1:(i+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+ e.preventDefault();activateTournamentTab(tabs[j],true);
+});
 document.addEventListener('click',async e=>{
+ const tab=e.target.closest('[data-tour-tab]');if(tab){activateTournamentTab(tab);return;}
+
  const rankingBtn=e.target.closest('[data-ranking-save]');if(rankingBtn){
   const id=rankingBtn.dataset.rankingSave,textarea=document.querySelector('[data-ranking="'+id+'"]');
   const ranking=textarea.value.split(/\r?\n/).filter(x=>x.trim()).map(line=>{const v=line.split(';').map(x=>x.trim());return {position:Number(v[0]),name:v[1],points:Number(v[2]||0),wins:Number(v[3]||0)};});
