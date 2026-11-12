@@ -57,6 +57,7 @@ async function session(req){const raw=cookies(req);if(!/^[a-f0-9]{64}$/.test(raw
 async function boot(){
  await pool.query(`CREATE TABLE IF NOT EXISTS ipz_products (id TEXT PRIMARY KEY, data JSONB NOT NULL);
  CREATE TABLE IF NOT EXISTS ipz_orders (ref TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ CREATE UNIQUE INDEX IF NOT EXISTS ipz_orders_whatsapp_request_unique ON ipz_orders ((data->>'requestId')) WHERE data ? 'requestId';
  CREATE TABLE IF NOT EXISTS ipz_bookings (ref TEXT PRIMARY KEY, court TEXT NOT NULL, booking_date DATE NOT NULL, booking_time TEXT NOT NULL, status TEXT NOT NULL, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE UNIQUE INDEX IF NOT EXISTS ipz_booking_slot_active ON ipz_bookings(court,booking_date,booking_time) WHERE status <> 'Cancelada';
  CREATE TABLE IF NOT EXISTS ipz_messages (ref TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
@@ -117,7 +118,43 @@ async function getDoc(c,id){if(c==='products'){let r=await pool.query('SELECT da
  const docs=await snapshot(c);return docs[0].data;}
 async function tx(fn){const c=await pool.connect();try{await c.query('BEGIN');const out=await fn(c);await c.query('COMMIT');return out;}catch(e){await c.query('ROLLBACK');throw e;}finally{c.release();}}
 function bad(m,status=400){const e=new Error(m);e.status=status;throw e;}
-// Compras directas removidas: os carrinhos seguem exclusivamente para o WhatsApp.
+// Pré-pedidos comerciais: guardados no Neon antes de abrir o WhatsApp.
+// Nunca debitam stock nem constituem pagamento/venda concluída.
+async function submitWhatsAppOrder(b){
+ const requestId=cut(b.requestId,80),name=cut(b.cn,160),phone=cut(b.cp,24);
+ if(!/^[a-zA-Z0-9-]{12,80}$/.test(requestId))bad('Identificador do pedido inválido');
+ if(name.length<3||!phoneValid(phone))bad('Indica nome e telefone moçambicano válidos');
+ const entries=Array.isArray(b.items)?b.items:[];
+ if(!entries.length||entries.length>40)bad('Carrinho vazio ou demasiado grande');
+ const combined=new Map();
+ for(const x of entries){
+  const id=cut(x.id,60),qty=Number(x.q),size=cut(x.sz,15);
+  if(!/^[a-zA-Z0-9_-]{2,60}$/.test(id)||!Number.isInteger(qty)||qty<1||qty>100)bad('Artigo ou quantidade inválida');
+  const key=id+'|'+size,old=combined.get(key);
+  combined.set(key,{id,sz:size,q:qty+(old?.q||0)});
+ }
+ // O mesmo requestId nunca cria outra encomenda, mesmo após duplo clique.
+ return tx(async db=>{
+  const previous=await db.query("SELECT data FROM ipz_orders WHERE data->>'requestId'=$1 LIMIT 1",[requestId]);
+  if(previous.rows.length)return previous.rows[0].data;
+  const items=[];let total=0;const perProduct=new Map();
+  for(const it of combined.values())perProduct.set(it.id,(perProduct.get(it.id)||0)+it.q);
+  for(const it of combined.values()){
+   const r=await db.query('SELECT data FROM ipz_products WHERE id=$1',[it.id]);
+   if(!r.rows.length||r.rows[0].data.pub===false)bad('Produto indisponível',409);
+   const pr=r.rows[0].data;
+   if(perProduct.get(it.id)>pr.s)bad('Stock insuficiente para '+pr.n,409);
+   const amount=Number(pr.p);
+   if(!Number.isFinite(amount)||amount<0)bad('Preço inválido no catálogo');
+   items.push({id:it.id,n:pr.n,sz:it.sz,q:it.q,u:amount,t:amount*it.q});total+=amount*it.q;
+  }
+  const item={ref:ref('PED'),requestId,at:new Date().toISOString(),cn:name,cp:normalizePhone(phone),ce:'',co:'',pm:'whatsapp',dl:'pick',a:'',total,pay:'A combinar pelo WhatsApp',payAuto:false,channel:'whatsapp',st:'Por processar',stockDeducted:false,items};
+  const inserted=await db.query('INSERT INTO ipz_orders(ref,data) VALUES($1,$2::jsonb) ON CONFLICT DO NOTHING RETURNING ref',[item.ref,JSON.stringify(item)]);
+  if(!inserted.rowCount){const found=await db.query("SELECT data FROM ipz_orders WHERE data->>'requestId'=$1",[requestId]);if(found.rows.length)return found.rows[0].data;bad('Não foi possível registar o pedido',409);}
+  return item;
+ });
+}
+
 function hoursValue(time){return Number(String(time||'').slice(0,2));}
 function bookingInterval(record){const start=hoursValue(record.time);const duration=Number(record.duration)||60;const end=record.endTime?hoursValue(record.endTime):start+Math.ceil(duration/60);return {start,end};}
 function bookingOverlaps(other,start,end){const r=bookingInterval(other);return start<r.end&&end>r.start;}
@@ -155,7 +192,21 @@ async function modifyRecord(c,payload){return tx(async db=>{
    if(c==='orders'){
     if(!ordersStatuses.includes(patch.st))bad('Estado de compra inválido');
     if(current.st!==patch.st){
-      if(current.st!=='Cancelado'&&patch.st==='Cancelado'){
+     if(current.channel==='whatsapp'){
+      // Stock só sai quando a encomenda é efectivamente entregue.
+      // Cancelar uma consulta não devolve stock que nunca foi descontado.
+      const before=!!current.stockDeducted,after=patch.st==='Entregue';
+      if(before!==after){
+       for(const it of current.items||[]){
+        const pr=await db.query('SELECT data FROM ipz_products WHERE id=$1 FOR UPDATE',[it.id]);
+        if(!pr.rows.length)bad('Produto não encontrado',409);
+        const p=pr.rows[0].data;
+        if(after&&p.s<it.q)bad('Stock insuficiente para concluir a venda: '+p.n,409);
+        await db.query('UPDATE ipz_products SET data=$2::jsonb WHERE id=$1',[it.id,JSON.stringify({...p,s:p.s+(after? -it.q:it.q)})]);
+       }
+      }
+      next.stockDeducted=after;
+     }else if(current.st!=='Cancelado'&&patch.st==='Cancelado'){
        for(const it of current.items){const pr=await db.query('SELECT data FROM ipz_products WHERE id=$1 FOR UPDATE',[it.id]);if(pr.rows.length){const p=pr.rows[0].data;await db.query('UPDATE ipz_products SET data=$2::jsonb WHERE id=$1',[it.id,JSON.stringify({...p,s:p.s+it.q})]);}}
       }else if(current.st==='Cancelado'&&patch.st!=='Cancelado'){
        for(const it of current.items){const pr=await db.query('SELECT data FROM ipz_products WHERE id=$1 FOR UPDATE',[it.id]);if(!pr.rows.length||pr.rows[0].data.s<it.q)bad('Stock insuficiente para reactivar o pedido',409);const p=pr.rows[0].data;await db.query('UPDATE ipz_products SET data=$2::jsonb WHERE id=$1',[it.id,JSON.stringify({...p,s:p.s-it.q})]);}
@@ -211,7 +262,7 @@ async function excel45Days(res){
   pool.query('SELECT id,caption,created_at FROM ipz_gallery ORDER BY created_at DESC')
  ]);
  const O=orders.rows.map(r=>r.data), B=bookings.rows.map(r=>r.data), M=messages.rows.map(r=>r.data), P=products.rows.map(r=>r.data), T=tournaments.rows.map(r=>({...r.data,id:r.id})), G=gallery.rows;
- const active=O.filter(x=>x.st!=='Cancelado');const revenue=active.reduce((n,x)=>n+Number(x.total||0),0);
+ const active=O.filter(x=>x.st!=='Cancelado');const revenue=active.filter(x=>x.channel==='whatsapp'&&x.st==='Entregue').reduce((n,x)=>n+Number(x.total||0),0);
  const wb=new ExcelJS.Workbook();wb.creator='Indoor Padel Zone';wb.created=until;
  wb.properties.date1904=false;
  const green='CFF902', dark='10232B';
@@ -226,7 +277,7 @@ async function excel45Days(res){
   return ws;
  }
  const period='De '+start.toISOString().slice(0,10)+' até '+until.toISOString().slice(0,10)+' (UTC)';
- const stats=[['Período de análise',period],['Compras registadas',O.length],['Compras activas',active.length],['Compras canceladas',O.length-active.length],['Valor de encomendas não canceladas (MT)',revenue],['Histórico de pagamentos verificados (MT)',O.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.total||0),0)+B.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.price||0),0)],['Reservas registadas',B.length],['Reservas pendentes',B.filter(x=>x.st==='Pendente').length],['Reservas confirmadas',B.filter(x=>x.st==='Confirmada').length],['Reservas canceladas',B.filter(x=>x.st==='Cancelada').length],['Mensagens recebidas',M.length],['Mensagens não lidas',M.filter(x=>!x.rd).length],['Produtos no catálogo (estado actual)',P.length],['Produtos publicados (estado actual)',P.filter(x=>x.pub!==false).length],['Produtos com stock baixo ≤ 3 (estado actual)',P.filter(x=>Number(x.s)<=3).length],['Torneios criados nos últimos 45 dias',T.length],['Fotografias da galeria (estado actual)',G.length]];
+ const stats=[['Período de análise',period],['Compras registadas',O.length],['Compras activas',active.length],['Compras canceladas',O.length-active.length],['Vendas WhatsApp entregues (MT, pagamento a confirmar externamente)',revenue],['Histórico de pagamentos verificados (MT)',O.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.total||0),0)+B.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.price||0),0)],['Reservas registadas',B.length],['Reservas pendentes',B.filter(x=>x.st==='Pendente').length],['Reservas confirmadas',B.filter(x=>x.st==='Confirmada').length],['Reservas canceladas',B.filter(x=>x.st==='Cancelada').length],['Mensagens recebidas',M.length],['Mensagens não lidas',M.filter(x=>!x.rd).length],['Produtos no catálogo (estado actual)',P.length],['Produtos publicados (estado actual)',P.filter(x=>x.pub!==false).length],['Produtos com stock baixo ≤ 3 (estado actual)',P.filter(x=>Number(x.s)<=3).length],['Torneios criados nos últimos 45 dias',T.length],['Fotografias da galeria (estado actual)',G.length]];
  const summary=sheet('Resumo',['Indicador','Valor'],stats,[51,73]);summary.getColumn(2).alignment={vertical:'middle',wrapText:true};
  summary.getCell(7,2).numFmt='#,##0.00 "MT"';
  const date=x=>x?new Date(x).toISOString().replace('T',' ').slice(0,16):'';
@@ -237,10 +288,10 @@ async function excel45Days(res){
  sheet('Torneios',['ID','Nome','Data','Estado','Organizador','Email','Telefone','Capacidade','Inscritos','Jogos sorteados'],T.map(x=>[x.id,x.title,x.date,x.status,x.name,x.email,x.phone,x.capacity,(x.participants||[]).length,(x.draw||[]).length]),[25,33,16,27,30,32,20,17,16,20]);
  sheet('Galeria',['ID','Legenda','Adicionada em (UTC)'],G.map(x=>[x.id,x.caption,date(x.created_at)]),[27,65,25]);
  const days=new Map();for(let i=44;i>=0;i--){const d=new Date(Date.UTC(until.getUTCFullYear(),until.getUTCMonth(),until.getUTCDate()-i));days.set(d.toISOString().slice(0,10),{orders:0,bookings:0,messages:0,revenue:0})}
- for(const o of O){const d=String(o.at).slice(0,10),v=days.get(d);if(v){v.orders++;if(o.st!=='Cancelado')v.revenue+=Number(o.total)||0}}
+ for(const o of O){const d=String(o.at).slice(0,10),v=days.get(d);if(v){v.orders++;if(o.channel==='whatsapp'&&o.st==='Entregue')v.revenue+=Number(o.total)||0}}
  for(const b of B){const v=days.get(String(b.at).slice(0,10));if(v)v.bookings++}
  for(const m of M){const v=days.get(String(m.at).slice(0,10));if(v)v.messages++}
- const daily=sheet('Evolução diária',['Data (UTC)','Compras','Reservas','Mensagens','Valor não cancelado MT'],[...days].map(([d,v])=>[d,v.orders,v.bookings,v.messages,v.revenue]),[22,19,19,19,30]);daily.getColumn(5).numFmt='#,##0.00 "MT"';
+ const daily=sheet('Evolução diária',['Data (UTC)','Compras','Reservas','Mensagens','Vendas WhatsApp entregues MT'],[...days].map(([d,v])=>[d,v.orders,v.bookings,v.messages,v.revenue]),[22,19,19,19,30]);daily.getColumn(5).numFmt='#,##0.00 "MT"';
  const buffer=await wb.xlsx.writeBuffer();res.writeHead(200,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="IDPZ-relatorio-45-dias-${until.toISOString().slice(0,10)}.xlsx"`,'Cache-Control':'no-store','Content-Length':buffer.length,'X-Content-Type-Options':'nosniff'});res.end(Buffer.from(buffer));
 }
 
@@ -350,7 +401,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(r==='/api/snapshot/products'&&m==='GET')return json(res,200,{docs:await snapshot('products')});
   if(r.startsWith('/api/submit/')&&m==='POST'){
    const c=r.split('/').pop(),b=await parse(req);let item;
-   if(c==='orders')return error(res,410,'Compras directas desactivadas. Envia o carrinho por WhatsApp.');else if(c==='bookings')item=await submitBooking(b);else if(c==='messages')item=await submitMessage(b);else return error(res,404,'Rota inexistente');
+   if(c==='orders'){limitCommunity(req);item=await submitWhatsAppOrder(b);}else if(c==='bookings')item=await submitBooking(b);else if(c==='messages')item=await submitMessage(b);else return error(res,404,'Rota inexistente');
    return json(res,201,{ok:true,item});
   }
   const s=await session(req);if(!s)return error(res,401,'Inicia sessão para aceder ao painel');
