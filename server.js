@@ -110,24 +110,33 @@ async function submitOrder(b){return tx(async db=>{
  await db.query('INSERT INTO ipz_orders(ref,data) VALUES($1,$2::jsonb)',[o.ref,JSON.stringify(o)]);
  return o;
 });}
+function hoursValue(time){return Number(String(time||'').slice(0,2));}
+function bookingInterval(record){const start=hoursValue(record.time);const duration=Number(record.duration)||60;const end=record.endTime?hoursValue(record.endTime):start+Math.ceil(duration/60);return {start,end};}
+function bookingOverlaps(other,start,end){const r=bookingInterval(other);return start<r.end&&end>r.start;}
 async function submitBooking(b){
- const date=cut(b.date,10),time=cut(b.time,5),pm=cut(b.pm,10),bi=cut(b.bi,30),name=cut(b.cn,160),wallet=cut(b.wallet,24);
- if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!times.includes(time)||!name.includes(' ')||name.length<3||!/^[\p{L}\p{N}/. -]{5,30}$/u.test(bi))bad('Data, hora, nome ou B.I. inválidos');
+ const date=cut(b.date,10),time=cut(b.time,5),endTime=cut(b.endTime,5),pm=cut(b.pm,10),bi=cut(b.bi,30),name=cut(b.cn,160),wallet=cut(b.wallet,24),phone=cut(b.cp,24);
+ const from=hoursValue(time),to=hoursValue(endTime),duration=(to-from)*60;
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d\d:00$/.test(time)||!/^\d\d:00$/.test(endTime)||from<6||from>=23||to>23||to<=from||!name.includes(' ')||name.length<3||!/[\p{L}]/u.test(name)||!/^[\p{L}\p{N}/. -]{5,30}$/u.test(bi))bad('Data, horário, nome ou B.I. inválidos');
+ if(!phoneValid(phone))bad('Indica um contacto moçambicano válido.');
  if(!['card','emola','mpesa'].includes(pm))bad('Escolhe um método de pagamento válido');
  if(pm!=='card'&&!phoneValid(wallet,pm))bad(pm==='emola'?'e-Mola exige +25886 ou +25887.':'M-Pesa exige +25884 ou +25885.');
  if(pm==='card'&&!cardConfig())bad('Pagamento por cartão indisponível. Escolhe outro método.',503);
  if(pm==='card'&&!validateEmail(cut(b.ce,160)))bad('Indica um email válido para o pagamento bancário.');
- const d=new Date(date+'T12:00:00Z');
- const today=new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Maputo'});
+ const d=new Date(date+'T12:00:00Z'),today=new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Maputo'});
  if(Number.isNaN(d.valueOf())||d.toISOString().slice(0,10)!==date||date<today)bad('Data inválida ou passada');
- // Se todos os campos estiverem ocupados, a reserva não é criada.
- // ON CONFLICT DO NOTHING respeita o índice único parcial e protege contra simultaneidade.
- for(const court of courts){
-  const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,cn:name,ce:pm==='card'?cut(b.ce,160):'',bi,cp:pm==='card'?'':normalizePhone(wallet),pm,wallet:pm==='card'?'':normalizePhone(wallet),duration:60,price:bookingPrice,pay:pm==='card'?'Aguardando pagamento bancário':'Pagamento simulado',payAuto:pm!=='card',st:'Pendente'};
-  const result=await pool.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT DO NOTHING RETURNING ref',[item.ref,court,date,time,item.st,JSON.stringify(item)]);
-  if(result.rowCount)return item;
- }
- bad('Todos os quatro campos estão ocupados neste horário. Escolhe outra hora.',409);
+ if(Date.parse(date+'T00:00:00Z')-Date.parse(today+'T00:00:00Z')>44*86400000)bad('As marcações estão disponíveis até 45 dias.');
+ return tx(async db=>{
+   // O mesmo lock por data é usado para todas as novas reservas, impedindo sobreposição em concorrência.
+   await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',['ipz-booking-'+date]);
+   const entries=(await db.query("SELECT court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date])).rows;
+   for(const court of courts){
+     if(entries.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},from,to)))continue;
+     const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,endTime,cn:name,ce:pm==='card'?cut(b.ce,160):'',bi,cp:normalizePhone(phone),pm,wallet:pm==='card'?'':normalizePhone(wallet),duration,price:(duration/60)*bookingPrice,pay:pm==='card'?'Aguardando pagamento bancário':'Pagamento simulado',payAuto:pm!=='card',st:'Pendente'};
+     await db.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[item.ref,court,date,time,item.st,JSON.stringify(item)]);
+     return item;
+   }
+   bad('Todos os quatro campos estão ocupados nesse período. Escolhe outro horário.',409);
+ });
 }
 async function submitMessage(b){if(!cut(b.n)||!cut(b.m)||!/^\S+@\S+\.\S+$/.test(cut(b.e)))bad('Dados da mensagem inválidos');const o={ref:ref('MSG'),at:new Date().toISOString(),n:cut(b.n),e:cut(b.e,220),m:cut(b.m,2000),rd:false};await pool.query('INSERT INTO ipz_messages(ref,data) VALUES($1,$2::jsonb)',[o.ref,JSON.stringify(o)]);return o;}
 async function modifyRecord(c,payload){return tx(async db=>{
@@ -149,6 +158,12 @@ async function modifyRecord(c,payload){return tx(async db=>{
     }next.st=patch.st;
    }
    if(c==='bookings'){if(!bookingStatuses.includes(patch.st))bad('Estado de reserva inválido');next.st=patch.st;
+    if(current.st==='Cancelada'&&next.st!=='Cancelada'){
+      await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',['ipz-booking-'+current.date]);
+      const entries=(await db.query("SELECT ref,court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[current.date])).rows;
+      const it=bookingInterval(current);
+      if(entries.some(x=>x.ref!==patch.ref&&x.court===current.court&&bookingOverlaps({...x.data,time:x.booking_time},it.start,it.end)))bad('Conflito: o campo está ocupado neste intervalo.',409);
+    }
     try{await db.query('UPDATE ipz_bookings SET status=$2,data=$3::jsonb WHERE ref=$1',[patch.ref,next.st,JSON.stringify(next)]);}catch(e){if(e.code==='23505')bad('Conflito: este campo e horário já estão ocupados',409);throw e;}continue;
    }
    await db.query(`UPDATE ${table} SET data=$2::jsonb WHERE ref=$1`,[patch.ref,JSON.stringify(next)]);
@@ -311,11 +326,13 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
     const input=await parse(req),result=await cardStart(cut(input.kind,10),cut(input.ref,100));return json(res,200,result);
   }
   if(r==='/api/availability'&&m==='GET'){
-   const date=u.searchParams.get('date')||'',court=u.searchParams.get('court')||'';
+   const date=u.searchParams.get('date')||'',court=u.searchParams.get('court')||'',start=u.searchParams.get('start')||'',end=u.searchParams.get('end')||'';
    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||(court&&!courts.includes(court)))return error(res,400,'Data ou campo inválido');
-   const rows=await pool.query("SELECT court,booking_time FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date]);
-   if(court)return json(res,200,{occupied:rows.rows.filter(x=>x.court===court).map(x=>x.booking_time)});
-   const available=Object.fromEntries(times.map(t=>[t,courts.length-rows.rows.filter(x=>x.booking_time===t).length]));
+   if((start||end)&&(!/^\d\d:00$/.test(start)||!/^\d\d:00$/.test(end)||hoursValue(start)<6||hoursValue(end)>23||hoursValue(end)<=hoursValue(start)))return error(res,400,'Intervalo de horas inválido');
+   const rows=await pool.query("SELECT court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date]);
+   if(start&&end){const st=hoursValue(start),en=hoursValue(end);const free=courts.filter(c=>!rows.rows.some(x=>x.court===c&&bookingOverlaps({...x.data,time:x.booking_time},st,en)));return json(res,200,{availableCount:free.length,start,end,date,price:(en-st)*bookingPrice});}
+   const available=Object.fromEntries(times.map(t=>[t,courts.length-courts.filter(c=>rows.rows.some(x=>x.court===c&&bookingOverlaps({...x.data,time:x.booking_time},hoursValue(t),hoursValue(t)+1))).length]));
+   if(court)return json(res,200,{occupied:times.filter(t=>rows.rows.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},hoursValue(t),hoursValue(t)+1)))});
    return json(res,200,{available,times,price:bookingPrice,duration:60});
   }
   if(r==='/api/session'&&m==='GET'){const s=await session(req);return json(res,200,{admin:!!s,role:s?.role||null,email:s?.email||null,online:true});}
@@ -403,7 +420,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  }
  if(m!=='GET'&&m!=='HEAD')return error(res,405,'Método não permitido');
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
- if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
+ if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
   res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':file.endsWith('.html')?'no-cache':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
