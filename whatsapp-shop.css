@@ -40,3 +40,12 @@ body:not(.adm) .qt .lk { color:#cff902 !important; text-decoration:underline; te
 @media (prefers-reduced-motion:reduce) {
  body:not(.adm) .qt button[data-cq],body:not(.adm) .qt button[data-q] { transition:none !important; }
 }
+
+/* V24: dados do cliente antes de criar pré-pedido WhatsApp */
+.ipz-wa-details{display:grid;gap:9px;margin:20px 0;padding:18px;border:1px solid var(--line, #b1bdc1);border-radius:16px}
+.ipz-wa-details h3{margin:0 0 6px;font-size:1.1rem}
+.ipz-wa-details label{font-weight:650;font-size:.88rem}
+.ipz-wa-details input{width:100%;min-height:46px;border:1px solid #6f8184;border-radius:12px;background:var(--bg,#fefefe);color:var(--txt,#102028);padding:10px 12px}
+.ipz-wa-details small{opacity:.78;line-height:1.5}
+.ipz-wa-error{min-height:1.5em;margin:8px 0;color:var(--txt,#102028);font-size:.85rem}
+.ipz-wa-send:disabled{opacity:.6;cursor:wait}
