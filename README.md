@@ -1,40 +1,27 @@
-# Actualização V4: categorias oficiais da loja
+# Indoor Padel Zone — Reservas V10 (4 campos)
 
-A loja e o painel Admin utilizam as 10 categorias na ordem exacta da referência:
+Esta versão apresenta as quatro opções **Campo 1, Campo 2, Campo 3 e Campo 4** na primeira etapa da reserva. O cliente escolhe explicitamente o campo. A verificação de disponibilidade devolve os campos livres para a data e o intervalo de horas seleccionados; o servidor impede sobreposições antes de guardar uma reserva no Neon.
 
-1. Raquetes
-2. Sapatilhas
-3. Roupa
-4. Sacos
-5. Packs
-6. Bolas
-7. Acessórios
-8. Outlet
-9. Pickleball
-10. Outras raquetes
+### Alterações principais
 
-O painel permite escolher qualquer destas categorias ao adicionar produtos e alterar a categoria de um artigo existente na tabela Produtos. A loja apresenta todas as categorias, mesmo quando ainda estão vazias.
+- Data (calendário) e horário (início/fim) alinhados, sem conteúdo sob o campo de data.
+- Quatro cartões seleccionáveis, com estado **Disponível / Ocupado**. Um campo ocupado fica desactivado para o período consultado.
+- Cartões de pagamento reorganizados para manter texto e subtítulo separados e uniformes.
+- O campo seleccionado aparece no resumo e é enviado à API; o servidor não o substitui automaticamente.
+- Mantém-se o preço demonstrativo de 1.700 MT por hora, das 06:00 às 23:00, pagamento por cartão dependente de gateway configurado e e-Mola/M-Pesa em modo de demonstração.
 
-**Migração Neon:** no próximo arranque, o servidor converte automaticamente os índices antigos da base de dados (`Vestuário` → `Roupa`; `Mochilas e Sacos` → `Sacos`; `Bolas` → `Bolas`, etc.). A migração é executada apenas uma vez por produto e não altera imagens, preços, stock ou pedidos históricos. Produtos anteriores sem marcador `categoryVersion` são migrados; produtos novos recebem `categoryVersion: 2`.
+### Publicação no GitHub
 
-**Ficheiros alterados:** `script.js`, `server.js`, `catalog.json`, `README.md`.
+Como os ficheiros estão na raiz do repositório `Website---IDPZ`, substitui **`script.js`, `server.js` e `booking-v7.css`**. Os restantes arquivos acompanham o projecto completo. Mantém o Root Directory vazio no Render. Faz backup do Neon antes da actualização e testa as reservas no ambiente publicado.
 
-**Actualização GitHub:** substitui estes quatro ficheiros na raiz do repositório e faz commit. O Render deverá fazer redeploy. Mantém as variáveis de ambiente existentes e a ligação ao Neon. Faz backup da base de dados antes de fazer deploy, pois a classificação dos produtos é actualizada na base.
+### Verificações recomendadas
 
----
-
-# Indoor Padel Zone — Admin v3
-
-## Actualização
-- **Excel completo de 45 dias**: botão no dashboard Admin e na área Compras. Download protegido em `/api/admin/export-45-days`, disponível só para Admin. O ficheiro XLSX inclui Resumo, Compras, Reservas, Mensagens, Produtos (estado actual) e Evolução diária. Filtro dos últimos 45 dias baseado na **data de criação** (UTC); o inventário é uma fotografia actual, não um histórico. O valor de encomendas é **simulado**, sem pagamentos reais.
-- **4 imagens por produto**: ao criar um produto, o Admin selecciona exactamente quatro fotografias. Em Produtos → Editar 4 fotos pode substituir as quatro. A primeira é a capa, as quatro surgem na galeria. A Recepcionista não pode alterar produtos. As fotografias são optimizadas pelo navegador para WebP e guardadas no Neon no campo JSONB do produto; não são guardadas no disco efémero do Render. O website recebe URLs de imagem leves (`/api/product-image/...`) em vez de descarregar as fotografias em cada actualização de stock.
-- **Limite:** cada fotografia optimizada ≤180 KB. Isto é adequado a um catálogo pequeno; para catálogo grande recomenda-se Cloudinary/R2/object storage. A utilização da base Neon aumenta com o número de produtos.
-
-## Deploy
-Enviar todos os ficheiros para a **raiz** do repositório GitHub, incluindo `admin-enhancements.css`, `package.json`, `server.js`, `script.js`, `index.html`, `animations.css`, `animations.js`, `redesign.css`, `styles.css` e SVGs. O Render deve usar Root Directory vazio, build `npm install`, start `npm start`, Node 20+. Manter `DATABASE_URL`, `NODE_ENV=production`, `COOKIE_SECURE=1`, `ADMIN_PASSWORD`, `RECEPTION_PASSWORD` (não enviar segredos ao GitHub). O comando `npm install` instalará `exceljs`.
-
-## Validação recomendada
-Criar produto com quatro imagens reais e confirmar que aparecem na loja e na página de produto, após reiniciar o Render. Exportar Excel como Admin e abrir as seis folhas no Excel/LibreOffice, confirmando que as encomendas não canceladas são apenas **valores simulados**. Confirmar que a Recepcionista recebe 403 em `/api/admin/export-45-days` e não tem acesso a criar ou editar produtos. Fazer backup da base Neon antes de utilizar com clientes.
+1. Selecciona uma data e o período 08:00–09:00: aparecem quatro cartões de campo.
+2. Reserva o Campo 1 e verifica o registo no painel Admin.
+3. Volta ao mesmo horário: Campo 1 deve aparecer ocupado e Campo 2, 3 e 4 livres.
+4. Reserva o Campo 2 no mesmo período: ambas as reservas devem coexistir.
+5. Selecciona um período sobreposto no Campo 1: o servidor tem de recusar a reserva.
+6. Verifica a disposição em modo claro, escuro, no telemóvel e no Brave.
 
 # Indoor Padel Zone — website + gestão online (v2)
 
@@ -256,3 +243,8 @@ Os ficheiros `animations.css` e `animations.js` estão na raiz. O `index.html` r
 3. Tenta reservar novamente uma hora dentro desse intervalo com os quatro campos ocupados, deve indicar indisponibilidade.
 4. Testa e-Mola `86 123 4567` e M-Pesa `84 123 4567`; prefixos trocados devem ser rejeitados.
 5. Verifica o checkout de cartão apenas com credenciais oficiais de teste do gateway; nunca introduzas cartões reais durante testes.
+
+
+## V8 — Refinamento visual do formulário de reservas
+
+Apenas `booking-v7.css` foi alterado. Foram corrigidos os contrastes, alinhamentos, campos agrupados, cartões de pagamento, hierarquia tipográfica, botões, espaçamento do cabeçalho fixo e responsividade. Usa o mesmo HTML, JavaScript e API do V7. Não altera o painel Admin.
