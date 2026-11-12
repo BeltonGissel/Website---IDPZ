@@ -292,3 +292,8 @@ Os exemplos aparecem em **Nossos Torneios → Torneios Realizados** e abrem a p�
 A página de detalhes de cada torneio segue o esquema fornecido: menu horizontal interno no topo; título, descrição e ranking na coluna esquerda; galeria do torneio à direita. Participantes acessíveis através de lista expansível sob o ranking. Em telemóvel, as colunas passam a ser apresentadas verticalmente.
 
 Actualização incremental: substituir apenas `community.js` e `community.css` na raiz do repositório GitHub. Não requer migração na base Neon. A descrição usa `description` se estiver disponível no torneio; caso contrário, mostra um texto neutro.
+
+
+## V15 — Filtros de torneios
+
+Os botões **Informações**, **Ranking** e **Galeria** nas páginas individuais dos torneios funcionam agora como filtros interactivos (tabs). Mostram apenas a secção seleccionada e destacam a activa. Também suportam navegação por teclado com setas, Home e End, e `prefers-reduced-motion`. Não é necessária alteração no Neon ou servidor. Para actualizar apenas esta funcionalidade, substituir `community.js` e `community.css`.
