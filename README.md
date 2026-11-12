@@ -22,3 +22,19 @@ Na raiz do GitHub **Website---IDPZ**, substituir `script.js`, `server.js`, `comm
 4. Confirmar que não aparecem opções de cartão/e-Mola/M-Pesa no website e que não há rotas de cobrança activas.
 
 **Sem integração oficial da WhatsApp Business Platform, o sistema não consegue garantir que a mensagem foi enviada nem recebida.**
+
+
+## V24 — Registo de pedidos WhatsApp (sem pagamento)
+
+- O carrinho recolhe nome e telefone do cliente e regista um **pré-pedido** na tabela existente `ipz_orders` do Neon, com estado `Por processar`.
+- A mensagem do WhatsApp inclui a referência gerada pelo servidor, os produtos, as quantidades, tamanhos e subtotal estimado. Destino: **+258 87 738 8644**.
+- Abrir o WhatsApp não confirma o envio da mensagem nem o pagamento. A equipa deve confirmar o pedido directamente com o cliente.
+- O Admin/Recepcionista continua a filtrar e alterar os estados `Por processar`, `Em preparação`, `Pronto`, `Entregue`, `Cancelado`.
+- **O stock não é reservado nem descontado na criação do pedido**; apenas quando o estado passa para `Entregue`. Ao sair de `Entregue`, o stock é reposto, de forma transaccional. Para pedidos antigos, mantém-se a lógica anterior.
+- O dashboard mostra o valor das vendas WhatsApp com estado `Entregue`, sem o apresentar como pagamento comprovado.
+- O registo utiliza um identificador idempotente para evitar pré-pedidos repetidos no duplo clique.
+- A criação de um pré-pedido requer o Neon online; se falhar, o cliente recebe um erro e pode tentar novamente.
+- Não há integração com gateways ou pagamento automático.
+
+### Publicação no GitHub
+Substituir `script.js`, `server.js`, `whatsapp-shop.css` e, opcionalmente, `README.md`. Manter o resto do projecto, o Render e o Neon. O servidor adiciona automaticamente o índice de prevenção de duplicados no arranque.
