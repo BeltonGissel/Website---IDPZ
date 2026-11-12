@@ -255,3 +255,24 @@ Apenas `booking-v7.css` foi alterado. Foram corrigidos os contrastes, alinhament
 O header do website público foi reduzido e apresenta, pela ordem: **Home**, **Sobre Nós**, **Galeria**, **Nossa Loja**, **Nossos Torneios**, **Contactos**, **Reservar Campo**. Em ecrãs até 1120 px, os links secundários passam para o menu responsivo, preservando o acesso imediato à reserva.
 
 Esta actualização modifica apenas `index.html` e `redesign.css`. Não altera as rotas, o servidor, o Neon, os formulários nem os painéis de gestão. No GitHub, os ficheiros continuam directamente na raiz.
+
+## V12 — Histórico e detalhes dos torneios realizados
+
+Na página **Nossos Torneios**, a secção **Torneios realizados** apresenta os torneios publicados cuja data passou ou cuja situação é «Concluído». Cada cartão permite abrir a página interna `#torneio-TOR-...`, com:
+
+- Nome, data e número de participantes do torneio;
+- Lista nominal dos participantes;
+- Ranking, com posição, participante, vitórias e pontos (preenchido pelo Admin; não é calculado automaticamente);
+- Galeria exclusiva do torneio (fotografias e legendas, também geridas pelo Admin).
+
+Na aba **Admin → Torneios**, abre **Ranking e galeria do torneio** no respectivo torneio. O ranking é introduzido numa linha por participante no formato `posição;nome;pontos;vitórias`, por exemplo `1;Ana Silva;100;5`. Os nomes devem coincidir com os participantes registados. A posição e os participantes não podem repetir-se. Podes guardar um ranking parcial e completá-lo mais tarde.
+
+Para adicionar fotografias, escolhe um ficheiro JPG, PNG ou WebP, define a legenda e clica em **Adicionar fotografia**. O sistema comprime a imagem no navegador e guarda-a na tabela PostgreSQL `ipz_tournament_photos`, associada ao torneio. As fotografias são independentes da galeria geral e são eliminadas automaticamente quando o torneio é eliminado. O Admin também pode apagar fotos individualmente.
+
+A API cria a nova tabela no arranque, sem alterar as reservas, produtos ou torneios existentes. Não são inventados torneios históricos: os torneios reais devem ser introduzidos pelo Admin usando a data em que aconteceram. Um torneio criado no passado pode ser marcado como concluído e receber ranking e fotos.
+
+**Novos endpoints:** `GET /api/tournaments/:id`, `GET /api/tournaments/photo/:id`, `PUT /api/admin/tournaments/:id/ranking`, `GET/POST /api/admin/tournaments/:id/photos`, `DELETE /api/admin/tournaments/:id/photos/:photoId`. Apenas Admin pode editar. O acesso público exibe só torneios aprovados/publicados.
+
+**Publicação:** substituir `index.html`, `script.js`, `community.js`, `community.css`, `server.js` e `README.md` na raiz do GitHub `Website---IDPZ`. O Root Directory no Render continua vazio. Nenhuma credencial adicional do Neon é necessária.
+
+**Validação:** sintaxe JS e estrutura do pacote testadas; ainda é necessário testar as consultas SQL e os uploads no Neon real antes de uso comercial.
