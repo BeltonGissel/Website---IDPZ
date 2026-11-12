@@ -201,3 +201,40 @@ Os ficheiros `animations.css` e `animations.js` estão na raiz. O `index.html` r
 - Cartão é apenas uma opção simulada, sem recolha de dados bancários. Não há cobrança real.
 - Dados de B.I. são pessoais: restringir acessos, retenção e exportações; considerar se é necessário recolhê-los antes da operação comercial real.
 - Esta versão altera `script.js`, `server.js`, `index.html`, `admin-enhancements.css` e `README.md`. O Neon mantém as tabelas existentes.
+
+## Galeria, torneios e cartão (v6, Novembro 2026)
+
+### Galeria
+- Página pública: `/#galeria`. Admin: `/admin.html` → **Galeria**.
+- O administrador pode carregar e apagar imagens JPG, PNG, WebP. Os ficheiros são comprimidos no navegador e armazenados em `ipz_gallery` no Neon; **não são guardados em `assets/`** nem no disco temporário do Render.
+- Máximo recomendado: cerca de 250 KB por foto após compressão. Fotos e legendas são públicas; evita dados privados.
+
+### Torneios
+- Página pública: `/#torneios`. Admin: `/admin.html` → **Torneios**.
+- Admin cria torneios publicados, edita a lista nominal de participantes, sorteia, publica, conclui ou apaga.
+- Visitante cria torneio com título, data, nome, email, contacto, capacidade e nomes dos participantes (um por linha, se disponíveis). O pedido fica `A aguardar aprovação` e o Admin decide publicá-lo.
+- Ao criar, quando houver pelo menos 2 nomes, a primeira ronda é sorteada por embaralhamento criptograficamente aleatório (`crypto.randomInt`) e ninguém é sorteado duas vezes nessa ronda; em número ímpar, a última pessoa recebe folga. Os sorteios são persistidos em `ipz_tournaments`.
+- Para nomes em falta, o Admin preenche a lista e faz o sorteio. **Não é um gerador automático de eliminatórias de todas as rondas**; a ronda seguinte deve ser gerida após apuramento dos vencedores.
+- A lista pública mostra torneios `Publicado` e `Concluído`. Visitantes não podem publicar sem aprovação. Criação pública tem limite básico de pedidos por IP; para lançamento comercial considere CAPTCHA e auditoria.
+
+### Gateway bancário por cartão — integração condicionada a credenciais comerciais
+- O código prepara a integração com a API documentada de **pay.co.mz** para cartão Visa/Mastercard, usando `POST /charges` com checkout alojado no prestador. A IDPZ **não recolhe nem guarda dados do cartão**.
+- Em Render → Environment, adiciona somente quando tiveres uma **conta comercial aprovada**:
+  - `PAY_API_KEY` — segredo Bearer do comerciante
+  - `PAY_MERCHANT_ID` — identificador atribuído pelo prestador
+  - `PAY_WALLET_ID` — carteira receptora atribuída pelo prestador
+- API e documentação pública: https://pay.co.mz/docs . Verifica as condições, o KYC, os preços e os callbacks com o prestador antes de activar.
+- Sem essas três variáveis, os pedidos com cartão são **recusados** com mensagem de indisponibilidade; não são simulados nem marcados como pagos.
+- Com credenciais válidas, o cliente é redireccionado para o checkout HTTPS do prestador. Encomenda/reserva começa com `Aguardando pagamento bancário`, não com `Pago`.
+- Admin → **Pagamentos** permite consultar as últimas cobranças do prestador (`GET /charges?limit=100`) e compara referência, montante, método e estado antes de marcar `Pago (confirmado)`. Ausência de transacção exige conciliação manual. Não confies num simples redirect de retorno.
+- Este fluxo NÃO foi testado com credenciais reais; não declarar cartão funcional em produção até validar uma cobrança autorizada, uma recusada, reembolso/expiração e reconciliação. A API pública consultada anuncia ausência de sandbox para alguns métodos.
+- e-Mola e M-Pesa continuam **simulados**; não há cobrança real nesses métodos.
+- Reserva feita por cartão pendente ainda ocupa um campo; é necessário definir uma política operacional para expirar/cancelar reservas não pagas, reconciliando primeiro o estado no prestador.
+
+### Actualização no GitHub e Render
+- Descompacta o ZIP e carrega **todos os ficheiros na raiz** de `Website---IDPZ` (Root Directory do Render continua vazio).
+- Ficheiros existentes alterados: `index.html`, `script.js`, `server.js`, `README.md`.
+- Novos ficheiros na raiz: `community.js`, `community.css`.
+- Mantém `DATABASE_URL`, `ADMIN_PASSWORD`, `RECEPTION_PASSWORD`, `NODE_ENV=production`, `COOKIE_SECURE=1`. Não coloques segredos no repositório.
+- Faz deploy; o servidor criará automaticamente `ipz_gallery` e `ipz_tournaments` no Neon, mantendo tabelas anteriores.
+- Verifica `/health`, Galeria, Torneios, login Admin, quatro fotos de produtos, compra e reserva. O deploy não substitui os testes reais de pagamentos.
