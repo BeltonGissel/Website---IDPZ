@@ -29,6 +29,15 @@ const phoneValid=(v,method)=>{const n=normalizePhone(v);return method==='emola'?
 const ordersStatuses=['Por processar','Em preparação','Pronto','Entregue','Cancelado'];
 const bookingStatuses=['Pendente','Confirmada','Cancelada'];
 const attempts=new Map();
+const communityWrites=new Map();
+function limitCommunity(req){
+ const ip=String(req.headers['x-forwarded-for']||req.socket.remoteAddress||'unknown').split(',')[0].trim();
+ const current=communityWrites.get(ip);const now=Date.now();
+ const entry=current&&now-current.start<600000?current:{start:now,count:0};
+ entry.count++;communityWrites.set(ip,entry);
+ if(communityWrites.size>10000)communityWrites.clear();
+ if(entry.count>5)bad('Demasiados pedidos. Tenta novamente mais tarde.',429);
+}
 const esc=v=>String(v??'').trim();
 const cut=(v,n=160)=>esc(v).slice(0,n);
 const ref=p=>p+'-'+crypto.randomBytes(6).toString('hex').toUpperCase();
@@ -51,7 +60,9 @@ async function boot(){
  CREATE TABLE IF NOT EXISTS ipz_bookings (ref TEXT PRIMARY KEY, court TEXT NOT NULL, booking_date DATE NOT NULL, booking_time TEXT NOT NULL, status TEXT NOT NULL, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE UNIQUE INDEX IF NOT EXISTS ipz_booking_slot_active ON ipz_bookings(court,booking_date,booking_time) WHERE status <> 'Cancelada';
  CREATE TABLE IF NOT EXISTS ipz_messages (ref TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
- CREATE TABLE IF NOT EXISTS ipz_sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, role TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);`);
+ CREATE TABLE IF NOT EXISTS ipz_sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, role TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);
+ CREATE TABLE IF NOT EXISTS ipz_gallery (id TEXT PRIMARY KEY, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ CREATE TABLE IF NOT EXISTS ipz_tournaments (id TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
  // Migração idempotente de categorias antigas (0-5) para o catálogo v2 (0-9).
  // Só converte artigos sem categoryVersion; preserva preços, imagens, stock e vendas.
  await pool.query(`UPDATE ipz_products
@@ -85,6 +96,7 @@ async function submitOrder(b){return tx(async db=>{
  if(!cut(b.cn)||!phoneValid(b.cp)||!/^\S+@\S+\.\S+$/.test(cut(b.ce)))bad('Dados de contacto inválidos');
   if(!['card','emola','mpesa'].includes(b.pm))bad('Método de pagamento inválido');
   if(b.pm!=='card'&&!phoneValid(b.w,b.pm))bad('Número de pagamento incompatível com a operadora');
+  if(b.pm==='card'&&!cardConfig())bad('Pagamento por cartão indisponível. Selecciona outra forma de pagamento.',503);
  if(b.dl==='del'&&!cut(b.a))bad('Indica o endereço de entrega');
  // Bloqueio determinístico de linhas evita venda acima do stock em compras simultâneas.
  const products=new Map();for(const id of [...quantities.keys()].sort()){
@@ -93,7 +105,7 @@ async function submitOrder(b){return tx(async db=>{
  }
  const normalized=[...sizes.values()].map(i=>{const p=products.get(i.id);return{id:i.id,n:p.n,sz:i.sz,q:i.q,u:p.p,t:p.p*i.q};});
  const total=normalized.reduce((v,i)=>v+i.t,0);
- const o={ref:ref('PED'),at:new Date().toISOString(),cn:cut(b.cn),cp:normalizePhone(b.cp),ce:cut(b.ce,220),co:cut(b.co,500),pm:b.pm,w:b.pm==='card'?'':normalizePhone(b.w),dl:b.dl==='del'?'del':'pick',a:cut(b.a,250),total,pay:'Pago (simulado)',payAuto:true,st:'Por processar',ap:true,items:normalized};
+ const o={ref:ref('PED'),at:new Date().toISOString(),cn:cut(b.cn),cp:normalizePhone(b.cp),ce:cut(b.ce,220),co:cut(b.co,500),pm:b.pm,w:b.pm==='card'?'':normalizePhone(b.w),dl:b.dl==='del'?'del':'pick',a:cut(b.a,250),total,pay:b.pm==='card'?'Aguardando pagamento bancário':'Pago (simulado)',payAuto:b.pm!=='card',st:'Por processar',ap:true,items:normalized};
  for(const [id,q] of quantities){const p=products.get(id);await db.query('UPDATE ipz_products SET data=$2::jsonb WHERE id=$1',[id,JSON.stringify({...p,s:p.s-q})]);}
  await db.query('INSERT INTO ipz_orders(ref,data) VALUES($1,$2::jsonb)',[o.ref,JSON.stringify(o)]);
  return o;
@@ -103,13 +115,15 @@ async function submitBooking(b){
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!times.includes(time)||!name.includes(' ')||name.length<3||!/^[\p{L}\p{N}/. -]{5,30}$/u.test(bi))bad('Data, hora, nome ou B.I. inválidos');
  if(!['card','emola','mpesa'].includes(pm))bad('Escolhe um método de pagamento válido');
  if(pm!=='card'&&!phoneValid(wallet,pm))bad(pm==='emola'?'e-Mola exige +25886 ou +25887.':'M-Pesa exige +25884 ou +25885.');
+ if(pm==='card'&&!cardConfig())bad('Pagamento por cartão indisponível. Escolhe outro método.',503);
+ if(pm==='card'&&!validateEmail(cut(b.ce,160)))bad('Indica um email válido para o pagamento bancário.');
  const d=new Date(date+'T12:00:00Z');
  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Maputo'});
  if(Number.isNaN(d.valueOf())||d.toISOString().slice(0,10)!==date||date<today)bad('Data inválida ou passada');
  // Se todos os campos estiverem ocupados, a reserva não é criada.
  // ON CONFLICT DO NOTHING respeita o índice único parcial e protege contra simultaneidade.
  for(const court of courts){
-  const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,cn:name,bi,cp:pm==='card'?'':normalizePhone(wallet),pm,wallet:pm==='card'?'':normalizePhone(wallet),duration:60,price:bookingPrice,pay:'Pagamento simulado',payAuto:true,st:'Pendente'};
+  const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,cn:name,ce:pm==='card'?cut(b.ce,160):'',bi,cp:pm==='card'?'':normalizePhone(wallet),pm,wallet:pm==='card'?'':normalizePhone(wallet),duration:60,price:bookingPrice,pay:pm==='card'?'Aguardando pagamento bancário':'Pagamento simulado',payAuto:pm!=='card',st:'Pendente'};
   const result=await pool.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT DO NOTHING RETURNING ref',[item.ref,court,date,time,item.st,JSON.stringify(item)]);
   if(result.rowCount)return item;
  }
@@ -168,13 +182,15 @@ async function saveProduct(id,v){if(!/^[a-zA-Z0-9_-]{2,60}$/.test(id))bad('ID in
 
 async function excel45Days(res){
  const until=new Date(), start=new Date(until.getTime()-45*86400000);
- const [orders,bookings,messages,products]=await Promise.all([
+ const [orders,bookings,messages,products,tournaments,gallery]=await Promise.all([
   pool.query('SELECT data FROM ipz_orders WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',[start,until]),
   pool.query('SELECT data FROM ipz_bookings WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',[start,until]),
   pool.query('SELECT data FROM ipz_messages WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',[start,until]),
-  pool.query('SELECT data FROM ipz_products ORDER BY id')
+  pool.query('SELECT data FROM ipz_products ORDER BY id'),
+  pool.query('SELECT id,data FROM ipz_tournaments WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',[start,until]),
+  pool.query('SELECT id,caption,created_at FROM ipz_gallery ORDER BY created_at DESC')
  ]);
- const O=orders.rows.map(r=>r.data), B=bookings.rows.map(r=>r.data), M=messages.rows.map(r=>r.data), P=products.rows.map(r=>r.data);
+ const O=orders.rows.map(r=>r.data), B=bookings.rows.map(r=>r.data), M=messages.rows.map(r=>r.data), P=products.rows.map(r=>r.data), T=tournaments.rows.map(r=>({...r.data,id:r.id})), G=gallery.rows;
  const active=O.filter(x=>x.st!=='Cancelado');const revenue=active.reduce((n,x)=>n+Number(x.total||0),0);
  const wb=new ExcelJS.Workbook();wb.creator='Indoor Padel Zone';wb.created=until;
  wb.properties.date1904=false;
@@ -190,14 +206,16 @@ async function excel45Days(res){
   return ws;
  }
  const period='De '+start.toISOString().slice(0,10)+' até '+until.toISOString().slice(0,10)+' (UTC)';
- const stats=[['Período de análise',period],['Compras registadas',O.length],['Compras activas',active.length],['Compras canceladas',O.length-active.length],['Valor de encomendas não canceladas (MT)',revenue],['Pagamentos reais recebidos (MT)',0],['Reservas registadas',B.length],['Reservas pendentes',B.filter(x=>x.st==='Pendente').length],['Reservas confirmadas',B.filter(x=>x.st==='Confirmada').length],['Reservas canceladas',B.filter(x=>x.st==='Cancelada').length],['Mensagens recebidas',M.length],['Mensagens não lidas',M.filter(x=>!x.rd).length],['Produtos no catálogo (estado actual)',P.length],['Produtos publicados (estado actual)',P.filter(x=>x.pub!==false).length],['Produtos com stock baixo ≤ 3 (estado actual)',P.filter(x=>Number(x.s)<=3).length]];
+ const stats=[['Período de análise',period],['Compras registadas',O.length],['Compras activas',active.length],['Compras canceladas',O.length-active.length],['Valor de encomendas não canceladas (MT)',revenue],['Pagamentos bancários confirmados (MT)',O.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.total||0),0)+B.filter(x=>x.pay==='Pago (confirmado)').reduce((n,x)=>n+Number(x.price||0),0)],['Reservas registadas',B.length],['Reservas pendentes',B.filter(x=>x.st==='Pendente').length],['Reservas confirmadas',B.filter(x=>x.st==='Confirmada').length],['Reservas canceladas',B.filter(x=>x.st==='Cancelada').length],['Mensagens recebidas',M.length],['Mensagens não lidas',M.filter(x=>!x.rd).length],['Produtos no catálogo (estado actual)',P.length],['Produtos publicados (estado actual)',P.filter(x=>x.pub!==false).length],['Produtos com stock baixo ≤ 3 (estado actual)',P.filter(x=>Number(x.s)<=3).length],['Torneios criados nos últimos 45 dias',T.length],['Fotografias da galeria (estado actual)',G.length]];
  const summary=sheet('Resumo',['Indicador','Valor'],stats,[51,73]);summary.getColumn(2).alignment={vertical:'middle',wrapText:true};
  summary.getCell(7,2).numFmt='#,##0.00 "MT"';
  const date=x=>x?new Date(x).toISOString().replace('T',' ').slice(0,16):'';
  const so=sheet('Compras',['Referência','Criada em (UTC)','Cliente','Telefone','Email','Estado','Pagamento','Método','Entrega','Endereço','Total MT','Itens'],O.map(x=>[x.ref,date(x.at),x.cn,x.cp,x.ce,x.st,x.pay,x.pm,x.dl,x.a,Number(x.total)||0,(x.items||[]).map(i=>`${i.q}x ${i.n}${i.sz?' ['+i.sz+']':''}`).join('; ')]),[22,22,26,18,30,20,22,14,16,32,17,65]);so.getColumn(11).numFmt='#,##0.00 "MT"';
  sheet('Reservas',['Referência','Criada em (UTC)','Campo','Data reservada','Hora','Cliente','B.I.','Pagamento','Telefone / carteira','Preço (MT)','Estado'],B.map(x=>[x.ref,date(x.at),x.court,x.date,x.time,x.cn,x.bi||'',x.pm||'',x.cp||'',Number(x.price)||0,x.st]),[24,23,18,20,13,28,24,18,23,17,18]);
  sheet('Mensagens',['Referência','Criada em (UTC)','Nome','Email','Mensagem','Lida'],M.map(x=>[x.ref,date(x.at),x.n,x.e,x.m,x.rd?'Sim':'Não']),[24,23,28,35,70,14]);
- const sp=sheet('Produtos',['ID','Nome','Categoria','Preço MT','Stock','Publicado','Imagens'],P.map(x=>[x.id,x.n,['Raquetes','Sapatilhas','Vestuário','Bolas','Mochilas e Sacos','Acessórios'][x.c]||'',Number(x.p)||0,Number(x.s)||0,x.pub!==false?'Sim':'Não',(x.images||[]).length]),[22,47,26,20,16,16,15]);sp.getColumn(4).numFmt='#,##0.00 "MT"';
+ const sp=sheet('Produtos',['ID','Nome','Categoria','Preço MT','Stock','Publicado','Imagens'],P.map(x=>[x.id,x.n,['Raquetes','Sapatilhas','Roupa','Sacos','Packs','Bolas','Acessórios','Outlet','Pickleball','Outras raquetes'][x.c]||'',Number(x.p)||0,Number(x.s)||0,x.pub!==false?'Sim':'Não',(x.images||[]).length]),[22,47,26,20,16,16,15]);sp.getColumn(4).numFmt='#,##0.00 "MT"';
+ sheet('Torneios',['ID','Nome','Data','Estado','Organizador','Email','Telefone','Capacidade','Inscritos','Jogos sorteados'],T.map(x=>[x.id,x.title,x.date,x.status,x.name,x.email,x.phone,x.capacity,(x.participants||[]).length,(x.draw||[]).length]),[25,33,16,27,30,32,20,17,16,20]);
+ sheet('Galeria',['ID','Legenda','Adicionada em (UTC)'],G.map(x=>[x.id,x.caption,date(x.created_at)]),[27,65,25]);
  const days=new Map();for(let i=44;i>=0;i--){const d=new Date(Date.UTC(until.getUTCFullYear(),until.getUTCMonth(),until.getUTCDate()-i));days.set(d.toISOString().slice(0,10),{orders:0,bookings:0,messages:0,revenue:0})}
  for(const o of O){const d=String(o.at).slice(0,10),v=days.get(d);if(v){v.orders++;if(o.st!=='Cancelado')v.revenue+=Number(o.total)||0}}
  for(const b of B){const v=days.get(String(b.at).slice(0,10));if(v)v.bookings++}
@@ -206,11 +224,92 @@ async function excel45Days(res){
  const buffer=await wb.xlsx.writeBuffer();res.writeHead(200,{'Content-Type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','Content-Disposition':`attachment; filename="IDPZ-relatorio-45-dias-${until.toISOString().slice(0,10)}.xlsx"`,'Cache-Control':'no-store','Content-Length':buffer.length,'X-Content-Type-Options':'nosniff'});res.end(Buffer.from(buffer));
 }
 
+
+// GALERIA E TORNEIOS: todas as gravações permanecem no PostgreSQL Neon.
+function galleryImage(input){
+ if(typeof input!=='string'||input.length>380000||!/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+/=]+$/.test(input))bad('Imagem inválida ou demasiado grande (máximo ~250 KB)',400);
+ return input;
+}
+function validateEmail(v){return /^\S+@\S+\.\S+$/.test(v)}
+function tournamentBody(b,isAdmin){
+ const name=cut(b.name,100),email=cut(b.email,160),phone=cut(b.phone,24),title=cut(b.title||b.name,110),date=cut(b.date,10);
+ const max=Number(b.capacity||b.count), roster=Array.isArray(b.participants)?b.participants:[];
+ if(!name||!validateEmail(email)||!phoneValid(phone)||!Number.isInteger(max)||max<2||max>128)bad('Preenche organizador, email, telefone e capacidade (2–128).');
+ if(title.length<3||!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+'T12:00:00Z')))bad('Indica nome e data válidos para o torneio.');
+ if(!isAdmin && date<new Date().toLocaleDateString('en-CA',{timeZone:'Africa/Maputo'}))bad('A data do torneio deve ser futura.');
+ if(roster.length>max)bad('Participantes excedem as vagas disponíveis.');
+ const names=roster.map(x=>cut(x,80)).filter(Boolean);
+ if(names.some(x=>x.length<2)||new Set(names.map(x=>x.toLocaleLowerCase('pt'))).size!==names.length)bad('Os participantes não podem repetir-se.');
+ return {name,email,phone,title,date,capacity:max,participants:names};
+}
+function drawMatches(names){
+ if(names.length<2)bad('São necessários pelo menos dois participantes para sortear.');
+ const list=[...names];for(let i=list.length-1;i>0;i--){const j=crypto.randomInt(i+1);[list[i],list[j]]=[list[j],list[i]];}
+ const matches=[];for(let i=0;i<list.length;i+=2)matches.push({a:list[i],b:list[i+1]||null});return matches;
+}
+async function galleryList(){const q=await pool.query('SELECT id,caption,created_at FROM ipz_gallery ORDER BY created_at DESC LIMIT 150');return q.rows.map(x=>({...x,url:'/api/gallery/image/'+x.id}));}
+async function tournamentList(admin=false){const q=await pool.query('SELECT id,data FROM ipz_tournaments ORDER BY (data->>\'date\') DESC LIMIT 300');return q.rows.filter(x=>admin||['Publicado','Concluído'].includes(x.data.status)).map(x=>({id:x.id,...x.data}));}
+// pay.co.mz: cartão com checkout alojado. Sem credenciais não há cobrança.
+const cardConfig=()=>!!(process.env.PAY_API_KEY&&process.env.PAY_MERCHANT_ID&&process.env.PAY_WALLET_ID);
+async function cardStart(kind,id){
+ if(!cardConfig())bad('O pagamento por cartão ainda não foi activado pela Indoor Padel Zone.',503);
+ const table=kind==='order'?'ipz_orders':kind==='booking'?'ipz_bookings':null;if(!table)bad('Tipo de pagamento inválido');
+ const row=await pool.query(`SELECT data FROM ${table} WHERE ref=$1`,[id]);if(!row.rows.length)bad('Registo não encontrado',404);
+ const record=row.rows[0].data;if(record.pm!=='card')bad('O método de pagamento não é cartão');
+ if(record.pay==='Pago (confirmado)')bad('Pagamento já confirmado',409);
+ if(record.checkoutUrl&&record.checkoutUrl.startsWith('https://pay.co.mz/checkout/'))return {checkout_url:record.checkoutUrl};
+ const amount=kind==='order'?record.total:record.price;
+ const resp=await fetch('https://pay.co.mz/api/public/v1/charges',{method:'POST',headers:{'Authorization':'Bearer '+process.env.PAY_API_KEY,'X-Merchant-Id':process.env.PAY_MERCHANT_ID,'X-Wallet-Id':process.env.PAY_WALLET_ID,'Idempotency-Key':id,'Content-Type':'application/json'},body:JSON.stringify({method:'card',amount,customer_name:record.cn,customer_contact:record.ce||record.cp}),signal:AbortSignal.timeout(12000)});
+ const payload=await resp.json();const checkout=payload?.data?.checkout_url;
+ if(!resp.ok||typeof checkout!=='string'||!/^https:\/\/pay\.co\.mz\/checkout\//.test(checkout))bad('Não foi possível iniciar o pagamento bancário. Tenta novamente.',502);
+ const updated={...record,checkoutUrl:checkout,paymentReference:payload.data.reference,pay:'Aguardando pagamento bancário',payAuto:false};
+ await pool.query(`UPDATE ${table} SET data=$2::jsonb WHERE ref=$1`,[id,JSON.stringify(updated)]);
+ return {checkout_url:checkout};
+}
+// Consulta servidor-a-servidor (não aceita status fornecido pelo navegador).
+async function reconcileCard(kind,id){
+ if(!cardConfig())bad('Gateway não configurado',503);
+ const table=kind==='order'?'ipz_orders':kind==='booking'?'ipz_bookings':null;if(!table)bad('Tipo inválido');
+ const row=await pool.query(`SELECT data FROM ${table} WHERE ref=$1`,[id]);if(!row.rows.length)bad('Registo inexistente',404);
+ const record=row.rows[0].data;if(!record.paymentReference)bad('Pagamento ainda não iniciado',409);
+ const response=await fetch('https://pay.co.mz/api/public/v1/charges?limit=100',{headers:{Authorization:'Bearer '+process.env.PAY_API_KEY,'X-Merchant-Id':process.env.PAY_MERCHANT_ID,'X-Wallet-Id':process.env.PAY_WALLET_ID},signal:AbortSignal.timeout(10000)});
+ if(!response.ok)bad('Não foi possível consultar o prestador',502);const data=await response.json();
+ const charge=(Array.isArray(data.data)?data.data:[]).find(x=>x.reference===record.paymentReference);
+ if(!charge)return {status:'pendente',verified:false,note:'Transacção não encontrada nas últimas 100 cobranças; requer reconciliação manual.'};
+ const expected=kind==='order'?record.total:record.price;
+ if(Number(charge.amount)!==Number(expected)||charge.method!=='card')bad('Divergência de pagamento. Contacta a administração.',409);
+ const verified=['paid','completed','success','successful'].includes(String(charge.status||charge.state).toLowerCase());
+ if(verified&&record.pay!=='Pago (confirmado)'){
+  const updated={...record,pay:'Pago (confirmado)',payAuto:false,paymentVerifiedAt:new Date().toISOString()};
+  await pool.query(`UPDATE ${table} SET data=$2::jsonb WHERE ref=$1`,[id,JSON.stringify(updated)]);
+ }
+ return {status:charge.status||charge.state||'pending',verified};
+}
+
 const mime={'.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon'};
 async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.pathname,m=req.method;
  if(r==='/health'&&m==='GET')return json(res,200,{ok:true});
  if(r.startsWith('/api/')){
   if(m!=='GET'&&!sameOrigin(req))return error(res,403,'Origem não autorizada');
+
+  if(r==='/api/gallery'&&m==='GET')return json(res,200,{items:await galleryList()});
+  if(r==='/api/gallery/image/'+(r.split('/').pop())&&m==='GET'&&/^\/api\/gallery\/image\/[a-zA-Z0-9_-]+$/.test(r)){
+   const id=r.split('/').pop(),q=await pool.query('SELECT image FROM ipz_gallery WHERE id=$1',[id]),uri=q.rows[0]?.image;
+   if(!uri)return error(res,404,'Imagem não encontrada');const type=uri.slice(5,uri.indexOf(';')),bytes=Buffer.from(uri.split(',')[1],'base64');
+   res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'X-Content-Type-Options':'nosniff','Cache-Control':'public,max-age=600'});return res.end(bytes);
+  }
+  if(r==='/api/tournaments'&&m==='GET')return json(res,200,{items:await tournamentList()});
+  if(r==='/api/tournaments'&&m==='POST'){
+    limitCommunity(req);
+    const v=tournamentBody(await parse(req),false),id=ref('TOR');
+    const data={...v,organizer:v.name,status:'A aguardar aprovação',createdAt:new Date().toISOString(),draw:v.participants.length>=2?drawMatches(v.participants):[]};
+    await pool.query('INSERT INTO ipz_tournaments(id,data) VALUES($1,$2::jsonb)',[id,JSON.stringify(data)]);
+    return json(res,201,{id,status:data.status,draw:data.draw});
+  }
+  if(r==='/api/payments/card/config'&&m==='GET')return json(res,200,{enabled:cardConfig(),provider:'pay.co.mz'});
+  if(r==='/api/payments/card/start'&&m==='POST'){
+    const input=await parse(req),result=await cardStart(cut(input.kind,10),cut(input.ref,100));return json(res,200,result);
+  }
   if(r==='/api/availability'&&m==='GET'){
    const date=u.searchParams.get('date')||'',court=u.searchParams.get('court')||'';
    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||(court&&!courts.includes(court)))return error(res,400,'Data ou campo inválido');
@@ -245,6 +344,43 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    return json(res,201,{ok:true,item});
   }
   const s=await session(req);if(!s)return error(res,401,'Inicia sessão para aceder ao painel');
+
+  if(r==='/api/admin/gallery'&&m==='POST'){
+    if(s.role!=='admin')return error(res,403,'Apenas Admin');const b=await parse(req,400000),id=ref('GAL');
+    const caption=cut(b.caption,160);if(!caption)bad('Indica uma legenda');
+    await pool.query('INSERT INTO ipz_gallery(id,caption,image) VALUES($1,$2,$3)',[id,caption,galleryImage(b.image)]);return json(res,201,{ok:true,id});
+  }
+  if(r.startsWith('/api/admin/gallery/')&&m==='DELETE'){
+    if(s.role!=='admin')return error(res,403,'Apenas Admin');const id=r.split('/').pop();await pool.query('DELETE FROM ipz_gallery WHERE id=$1',[id]);return json(res,200,{ok:true});
+  }
+  if(r==='/api/admin/tournaments'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin');return json(res,200,{items:await tournamentList(true)});}
+  if(r==='/api/admin/tournaments'&&m==='POST'){
+    if(s.role!=='admin')return error(res,403,'Apenas Admin');const v=tournamentBody(await parse(req),true),id=ref('TOR');
+    await pool.query('INSERT INTO ipz_tournaments(id,data) VALUES($1,$2::jsonb)',[id,JSON.stringify({...v,organizer:v.name,status:'Publicado',draw:[],createdAt:new Date().toISOString()})]);return json(res,201,{ok:true,id});
+  }
+  if(r.startsWith('/api/admin/tournaments/')&&m==='PATCH'){
+    if(s.role!=='admin')return error(res,403,'Apenas Admin');const id=r.split('/').pop(),b=await parse(req);
+    const row=await pool.query('SELECT data FROM ipz_tournaments WHERE id=$1',[id]);if(!row.rows.length)return error(res,404,'Torneio não encontrado');
+    let data=row.rows[0].data;
+    if(b.action==='publish')data={...data,status:'Publicado'};
+    else if(b.action==='finish')data={...data,status:'Concluído'};
+    else if(b.action==='draw'){
+       const participants=Array.isArray(data.participants)?data.participants:[];
+       if(participants.length<2)bad('Inscreve pelo menos dois participantes antes do sorteio.');
+       data={...data,draw:drawMatches(participants),drawnAt:new Date().toISOString()};
+    }else if(b.action==='roster'){
+       const participants=Array.isArray(b.participants)?b.participants.map(x=>cut(x,80)).filter(Boolean):[];
+       if(participants.length>data.capacity||new Set(participants.map(x=>x.toLowerCase())).size!==participants.length)bad('Lista inválida ou nomes repetidos.');
+       data={...data,participants,draw:[]};
+    } else bad('Operação inválida');
+    await pool.query('UPDATE ipz_tournaments SET data=$2::jsonb WHERE id=$1',[id,JSON.stringify(data)]);return json(res,200,{ok:true});
+  }
+  if(r.startsWith('/api/admin/tournaments/')&&m==='DELETE'){
+     if(s.role!=='admin')return error(res,403,'Apenas Admin');await pool.query('DELETE FROM ipz_tournaments WHERE id=$1',[r.split('/').pop()]);return json(res,200,{ok:true});
+  }
+  if(r==='/api/admin/payments/reconcile'&&m==='POST'){
+    if(s.role!=='admin')return error(res,403,'Apenas Admin');const b=await parse(req);return json(res,200,await reconcileCard(cut(b.kind,10),cut(b.ref,100)));
+  }
   if(r==='/api/admin/export-45-days'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode exportar o relatório');return excel45Days(res);}
   const sm=r.match(/^\/api\/snapshot\/(orders|bookings|messages|products)$/);
   if(sm&&m==='GET')return json(res,200,{docs:await snapshot(sm[1])});
@@ -267,7 +403,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  }
  if(m!=='GET'&&m!=='HEAD')return error(res,405,'Método não permitido');
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
- if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','admin-enhancements.css','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
+ if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
   res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':file.endsWith('.html')?'no-cache':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
