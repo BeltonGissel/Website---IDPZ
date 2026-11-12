@@ -154,51 +154,46 @@ h+=o?'<p class="out">Produto esgotado.</p>':'<div style="display:flex;gap:8px;fl
 h+='<h3 style="margin:26px 0 8px;font-size:1rem">Descrição</h3><p style="color:var(--mut);font-size:.85rem">'+DS[p.c]+'</p><h3 style="margin:20px 0 8px;font-size:1rem">Especificações</h3><table class="spt"><tr><td>Categoria</td><td>'+K[p.c]+'</td></tr><tr><td>Marca</td><td>[por confirmar]</td></tr><tr><td>Material</td><td>[por confirmar]</td></tr><tr><td>Referência</td><td>'+p.id.toUpperCase()+'</td></tr></table><h3 style="margin:20px 0 8px;font-size:1rem">Entrega ou levantamento</h3><p style="color:var(--mut);font-size:.85rem">Levantamento na loja ou entrega local. Prazos e taxas: [por confirmar pela Indoor Padel Zone].</p></div></div>';
 h+='<h2 style="margin:44px 0 14px;font-size:1.4rem">Também te pode interessar</h2><div class="pg">'+rel.map(card).join("")+"</div>";
 $("#pv").innerHTML=h;var z=$("#zm"),sv=z.querySelector("svg");z.onmousemove=function(e){var r=z.getBoundingClientRect();sv.style.transformOrigin=((e.clientX-r.left)/r.width*100)+"% "+((e.clientY-r.top)/r.height*100)+"%"}}
-// Catálogo via WhatsApp: guarda um pré-pedido no Neon sem cobrar ou diminuir stock.
-var IPZ_WHATSAPP='258877388644';
+// Pedidos comerciais via WhatsApp: registar no Neon ANTES de abrir a conversa.
+var IPZ_WHATSAPP='258877388644',ipzOrderSaving=false;
+function ipzCartSignature(){return JSON.stringify(cart.map(function(l){return {id:l.id,sz:l.sz||'',q:l.q}}));}
+function ipzRequestKey(signature){
+ var current=null;try{current=JSON.parse(sessionStorage.getItem('ipz-wa-request')||'null')}catch(e){}
+ if(current&&current.signature===signature&&current.id)return current.id;
+ var id=window.crypto&&crypto.randomUUID?crypto.randomUUID(): 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16)});
+ try{sessionStorage.setItem('ipz-wa-request',JSON.stringify({signature:signature,id:id}))}catch(e){}return id;
+}
 function whatsappMessage(order){
- var rows=['Olá, Indoor Padel Zone! 👋','Gostaria de confirmar este pedido de produtos.'];
- if(order)rows.push('Referência: '+order.ref,'Cliente: '+order.cn,'Contacto: '+order.cp);
+ var rows=['Olá, Indoor Padel Zone! 👋','Gostaria de confirmar a disponibilidade destes produtos:'];
+ if(order)rows.push('Referência do pedido: '+order.ref);
  rows.push('');
- var products=order?order.items:cart.map(function(l){var p=gp(l.id);return p?{n:p.n,sz:l.sz,q:l.q,u:p.p,t:p.p*l.q}:null}).filter(Boolean);
- products.forEach(function(l,i){rows.push((i+1)+'. '+l.n+(l.sz?' (Tamanho '+l.sz+')':'')+' — '+l.q+' × '+money(l.u)+' = '+money(l.t));});
- rows.push('','Subtotal estimado: '+money(order?order.total:tot()),'Entrega, pagamento e disponibilidade a confirmar pelo WhatsApp.','Obrigado!');
+ (order?order.items:cart.map(function(l){var p=gp(l.id);return p?{n:p.n,sz:l.sz,q:l.q,u:p.p,t:p.p*l.q}:null}).filter(Boolean)).forEach(function(it,i){rows.push((i+1)+'. '+it.n+(it.sz?' (Tamanho '+it.sz+')':'')+' — '+it.q+' × '+money(it.u)+' = '+money(it.t));});
+ rows.push('','Subtotal estimado: '+money(order?order.total:tot()),'Entrega/levantamento e pagamento a combinar pelo WhatsApp.','Por favor, confirmem a disponibilidade e o valor final.');
  return rows.join('\n');
 }
 function whatsappLink(order){return 'https://wa.me/'+IPZ_WHATSAPP+'?text='+encodeURIComponent(whatsappMessage(order));}
-function cartDraftId(name,phone){
- var fp=JSON.stringify({cart:cart,name:name,phone:phone}),old;
- try{old=JSON.parse(sessionStorage.getItem('ipz-whatsapp-draft')||'null')}catch(e){}
- if(old&&old.fp===fp)return old.key;
- var key=(window.crypto&&crypto.randomUUID?crypto.randomUUID():'WA-'+Date.now()+'-'+Math.random().toString(36).slice(2));
- try{sessionStorage.setItem('ipz-whatsapp-draft',JSON.stringify({fp:fp,key:key}))}catch(e){}
- return key;
-}
 function cartView(){
  var el=$('#cv');
  if(!cart.length){el.innerHTML='<p>O teu carrinho está vazio.</p><a class="btn" href="#loja">Ir para a loja</a>';return;}
- var customer;
- try{customer=JSON.parse(sessionStorage.getItem('ipz-wa-customer')||'{}')}catch(e){customer={}}
  el.innerHTML=cart.map(function(l,i){var p=gp(l.id);if(!p)return '';return '<div class="it"><div class="ti">'+art(p,0)+'</div><div><h3>'+E(p.n)+'</h3><small>'+(l.sz?'Tamanho '+E(l.sz)+' · ':'')+money(p.p)+'</small><div class="qt"><button data-cq="'+i+':-1" aria-label="Diminuir quantidade" title="Diminuir quantidade"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></button><span>'+l.q+'</span><button data-cq="'+i+':1" aria-label="Aumentar quantidade" title="Aumentar quantidade"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></button><button class="lk" data-rm="'+i+'">Remover</button></div></div><b>'+money(p.p*l.q)+'</b></div>'}).join('')+
- '<div class="sum"><div><span>Subtotal estimado</span><b>'+money(tot())+'</b></div><div><span>Entrega</span><span>A combinar</span></div><div class="ipz-wa-details"><h3>Dados para registar o pedido</h3><label for="ipz-wa-name">Nome e apelido</label><input id="ipz-wa-name" autocomplete="name" maxlength="160" required placeholder="Nome e apelido" value="'+E(customer.cn||'')+'"><label for="ipz-wa-phone">Telefone moçambicano</label><input id="ipz-wa-phone" autocomplete="tel" type="tel" maxlength="18" placeholder="+258 87 000 0000" required value="'+E(customer.cp||'')+'"><small>O pedido aparece no Admin como «Por processar». A venda só é concluída quando a equipa a confirmar.</small></div><p class="ipz-wa-note">Não há pagamentos no website. Ao continuar, guardamos a lista para gestão e abrimos o WhatsApp. Tens de enviar a mensagem manualmente.</p><button class="btn ipz-wa-send" type="button" data-wa-register="1">Registar pedido e abrir WhatsApp ↗</button><p class="ipz-wa-error" id="ipz-wa-feedback" role="status" aria-live="polite"></p><a class="btn bo" href="#loja">Continuar a escolher</a></div>';
+ '<div class="sum"><div><span>Subtotal estimado</span><b>'+money(tot())+'</b></div><div><span>Entrega</span><span>A combinar</span></div><div class="ipz-wa-contact"><label for="ipz-order-name">Nome (opcional)</label><input id="ipz-order-name" type="text" autocomplete="name" maxlength="120" placeholder="Como te devemos identificar?"><label for="ipz-order-phone">Telefone (opcional)</label><input id="ipz-order-phone" type="tel" autocomplete="tel" placeholder="+258 84 123 4567"></div><p class="ipz-wa-note">Ao continuar, a lista fica registada no painel Admin como <b>pedido por confirmar</b>. Depois abre-se o WhatsApp para enviares a mensagem. Ainda não é uma compra paga ou concluída.</p><button type="button" class="btn ipz-wa-send" data-wa-submit="1">Enviar lista pelo WhatsApp ↗</button><p id="ipz-wa-feedback" role="status" aria-live="polite"></p><a class="btn bo" href="#loja">Continuar a escolher</a></div>';
 }
 document.addEventListener('click',async function(e){
- var b=e.target.closest('[data-wa-register]');if(!b||b.disabled)return;
- var name=document.getElementById('ipz-wa-name').value.trim(),phone=document.getElementById('ipz-wa-phone').value.trim();
- var feedback=document.getElementById('ipz-wa-feedback');
- if(name.length<3){feedback.textContent='Introduz o teu nome e apelido.';return}
- if(!phoneValid(phone)){feedback.textContent='Indica um contacto moçambicano válido (+258).';return}
- try{sessionStorage.setItem('ipz-wa-customer',JSON.stringify({cn:name,cp:phone}))}catch(e){}
- b.disabled=true;b.textContent='A registar o pedido…';feedback.textContent='';
- // Abrir a janela no gesto de clique para evitar o bloqueio de pop-ups.
- var tab=window.open('about:blank','_blank');
+ var button=e.target.closest('[data-wa-submit]');if(!button||ipzOrderSaving)return;
+ e.preventDefault();if(!cart.length)return;
+ var number=($('#ipz-order-phone')||{}).value||'',name=($('#ipz-order-name')||{}).value||'';
+ if(number&&!/^(?:\+?258)?8\d{8}$/.test(number.replace(/[\s()-]/g,''))){toast('Verifica o número de telefone moçambicano.');return;}
+ var sig=ipzCartSignature(),feedback=$('#ipz-wa-feedback');
+ var popup=window.open('about:blank','_blank');if(popup){popup.document.title='A preparar pedido';popup.document.body.textContent='A registar o pedido na Indoor Padel Zone…';}
+ ipzOrderSaving=true;button.disabled=true;button.textContent='A registar pedido…';
  try{
-  var result=await request('/api/submit/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:cartDraftId(name,phone),cn:name,cp:phone,items:cart.map(function(l){return{id:l.id,sz:l.sz,q:l.q}})})});
-  var url=whatsappLink(result.item);
-  if(tab&&!tab.closed){tab.location.replace(url)}else location.assign(url);
-  feedback.textContent='Pedido '+result.item.ref+' registado. Envia a mensagem no WhatsApp para confirmar.';
- }catch(err){if(tab&&!tab.closed)tab.close();feedback.textContent='Não foi possível registar: '+err.message;toast(err.message)}
- finally{b.disabled=false;b.textContent='Registar pedido e abrir WhatsApp ↗'}
+  var result=await request('/api/submit/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({requestId:ipzRequestKey(sig),cn:name,cp:number,items:cart.map(function(x){return{id:x.id,sz:x.sz||'',q:x.q}})})});
+  var order=result.item,url=whatsappLink(order);
+  if(feedback)feedback.textContent='Pedido '+order.ref+' registado no painel. Confirma o envio no WhatsApp.';
+  if(popup&&!popup.closed)popup.location.href=url;else {var anchor=document.createElement('a');anchor.href=url;anchor.target='_blank';anchor.rel='noopener noreferrer';anchor.textContent='Abrir mensagem no WhatsApp';if(feedback)feedback.appendChild(anchor);}
+  toast('Pedido registado. Envia a mensagem no WhatsApp.');
+ }catch(err){if(popup&&!popup.closed)popup.close();if(feedback)feedback.textContent=err.message||'Não foi possível registar o pedido.';toast('Não foi possível registar. Tenta novamente.');}
+ finally{ipzOrderSaving=false;button.disabled=false;button.textContent='Enviar lista pelo WhatsApp ↗';}
 });
 function checkout(){location.hash='#carrinho';}
 function od(){location.hash='#carrinho';}
@@ -268,7 +263,7 @@ admContent()}
 function admRefresh(){if(document.body.classList.contains("adm")&&$("#adc")&&IS_ADM){var nb=MSG.filter(function(m){return!m.rd}).length,l=document.querySelector('a[href="#admin-mensagens"]');if(l)l.innerHTML="<i></i>Mensagens"+(nb?'<b class="nbd">'+nb+"</b>":"");admContent()}else if(document.body.classList.contains("adm"))admRender(true)}
 function hd(t,s,x){return '<div class="ah"><div><h1>'+t+"</h1><p>"+s+"</p></div><div>"+(x||"")+"</div></div>"}
 function admContent(){var el=$("#adc"),h=AH;el.innerHTML=h==="admin-pedidos"?tbO():h==="admin-reservas"?tbB():h==="admin-produtos"?(ROLE==="admin"?tbP():dash()):h==="admin-mensagens"?tbM():["admin-galeria","admin-torneios"].includes(h)?'<section id="ipz-community-admin"><h2>A carregar…</h2></section>':dash();if(["admin-galeria","admin-torneios"].includes(h)&&window.IPZCommunity)window.IPZCommunity.renderAdmin(h,{orders:ORD,bookings:BKG})}
-function dash(){var ok=ORD.filter(function(o){return o.st!=="Cancelado"}),rev=0,i;ok.forEach(function(o){if(o.channel==="whatsapp"&&o.st==="Entregue")rev+=o.total});
+function dash(){var ok=ORD.filter(function(o){return o.st!=="Cancelado"}),rev=0,i;ok.filter(function(o){return o.st==='Entregue'}).forEach(function(o){rev+=o.total});
 var pend=BKG.filter(function(b){return b.st==="Pendente"}).length,unr=MSG.filter(function(m){return!m.rd}).length,days=[],mx=1,best=null;
 for(i=6;i>=0;i--){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);days.push({d:d,n:0})}
 ok.forEach(function(o){var t=new Date(o.at);t.setHours(0,0,0,0);days.forEach(function(x){if(x.d.getTime()===t.getTime())x.n++})});
@@ -281,7 +276,7 @@ var arc='<path d="M20 100A80 80 0 0 1 180 100" pathLength="100" fill="none" stro
 var low=PR.filter(function(p){return p.pub!==false&&p.s<=3}).sort(function(a,b){return a.s-b.s}).slice(0,5),cl=["#fbd5d5","#d5f0c8","#d5dcfb","#fbe9c4"];
 return hd("Painel","Compras, reservas e mensagens do website.",(ROLE==='admin'?'<a class="btn" href="#admin-produtos" style="padding:11px 20px">+ Adicionar Produto</a> ':'')+'<button class="btn bo" data-ex="1" style="padding:11px 20px">Exportar Excel · 45 dias</button>')+
 '<div class="dg"><div class="kp k1"><div class="kt">Compras totais<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+ORD.length+'</div><small>'+ORD.filter(function(o){return o.st==="Por processar"}).length+' por processar</small></div>'+
-'<div class="kp"><div class="kt">Vendas concluídas (WhatsApp)<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+rev.toLocaleString("pt-PT")+'<small> MT</small></div><small class="gr">Valor estimado de vendas entregues; pagamento externo</small></div>'+
+'<div class="kp"><div class="kt">Histórico de encomendas<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+rev.toLocaleString("pt-PT")+'<small> MT</small></div><small class="gr">Registos antigos, sem cobrança actual</small></div>'+
 '<div class="kp"><div class="kt">Reservas<a href="#admin-reservas" class="ka">↗</a></div><div class="kn">'+BKG.length+'</div><small class="gr">'+pend+' por confirmar</small></div>'+
 '<div class="kp"><div class="kt">Mensagens<a href="#admin-mensagens" class="ka">↗</a></div><div class="kn">'+MSG.length+'</div><small class="gr">'+unr+' por ler</small></div>'+
 '<div class="kp span2"><div class="kt">Compras nos últimos 7 dias</div><div class="bs">'+bars+'</div></div>'+
@@ -301,7 +296,7 @@ function stateButtons(kind,item){var current=IPZ_STATE_DRAFT[kind][item.ref]||it
 return '<div class="ipz-state-buttons" role="group" aria-label="Estado de '+E(item.ref)+'">'+stateOptions(kind).map(function(v){var selected=current===v;return '<button type="button" class="ipz-state-choice'+(selected?' is-selected':'')+'" data-state-choose="'+kind+'" data-record-ref="'+E(item.ref)+'" data-new-state="'+E(v)+'" aria-pressed="'+selected+'">'+E(v)+'</button>'}).join('')+'</div>'+(current!==item.st?'<small class="ipz-state-pending">Alteração por guardar</small>':'')}
 function stateFooter(kind){var count=Object.keys(IPZ_STATE_DRAFT[kind]).length;return '<div class="ipz-state-footer"><span id="ipz-draft-count">'+(count?count+' alteração(ões) por guardar':'Nenhuma alteração pendente')+'</span><button type="button" class="btn ipz-save-states" data-save-state="'+kind+'" '+(!count||IPZ_STATE_SAVING?'disabled':'')+'>Guardar alterações e aplicar filtro</button></div><p class="ipz-state-feedback" role="status" aria-live="polite"></p>'}
 function stateFiltered(kind,list){var v=IPZ_STATE_FILTER[kind];return list.filter(mt).filter(function(x){return v==='Todos'||x.st===v})}
-function tbO(){var a=stateFiltered('orders',ORD);return hd('Compras','Gerir e filtrar os estados de todas as compras.','<button class="btn bo" data-ex="1">Exportar Excel · 45 dias</button>')+stateFilterUI('orders')+'<div class="tw ipz-admin-state-table"><table class="tb2"><thead><tr><th>Referência</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Entrega</th><th>Estado da compra</th></tr></thead><tbody>'+(a.length?a.map(function(o){return '<tr><td><b>'+E(o.ref)+'</b><br><small>'+fd(o.at)+'</small></td><td>'+E(o.cn)+'<br><small>'+E(o.cp)+' · '+E(o.ce)+'</small></td><td>'+(o.items||[]).map(function(x){return E(x.q+'× '+x.n+(x.sz?' ('+x.sz+')':''))}).join('<br>')+'</td><td><b>'+money(o.total)+'</b></td><td>'+chip(o.pay||'Pendente')+'<br><small>'+E(PM[o.pm]||o.pm||'')+'</small></td><td>'+(o.dl==='del'?'Entrega: '+E(o.a):'Levantamento')+'</td><td>'+stateButtons('orders',o)+'</td></tr>'}).join(''):'<tr><td colspan="7">Sem compras com este filtro.</td></tr>')+'</tbody></table></div>'+stateFooter('orders')}
+function tbO(){var a=stateFiltered('orders',ORD);return hd('Compras','Pedidos recebidos do carrinho via WhatsApp; confirmar entrega e pagamento com o cliente.','<button class="btn bo" data-ex="1">Exportar Excel · 45 dias</button>')+stateFilterUI('orders')+'<div class="tw ipz-admin-state-table"><table class="tb2"><thead><tr><th>Referência</th><th>Cliente</th><th>Itens</th><th>Total</th><th>Pagamento</th><th>Entrega</th><th>Estado da compra</th></tr></thead><tbody>'+(a.length?a.map(function(o){return '<tr><td><b>'+E(o.ref)+'</b><br><small>'+fd(o.at)+'</small></td><td>'+E(o.cn)+'<br><small>'+E(o.cp)+' · '+E(o.ce)+'</small></td><td>'+(o.items||[]).map(function(x){return E(x.q+'× '+x.n+(x.sz?' ('+x.sz+')':''))}).join('<br>')+'</td><td><b>'+money(o.total)+'</b></td><td>'+chip(o.pay||'A combinar')+'<br><small>'+E(o.channel==='whatsapp'?'Pedido WhatsApp (envio não verificável)':PM[o.pm]||o.pm||'')+'</small></td><td>'+(o.dl==='del'?'Entrega: '+E(o.a):'Levantamento')+'</td><td>'+stateButtons('orders',o)+'</td></tr>'}).join(''):'<tr><td colspan="7">Sem compras com este filtro.</td></tr>')+'</tbody></table></div>'+stateFooter('orders')}
 function tbB(){var a=stateFiltered('bookings',BKG);return hd('Reservas','Filtrar, confirmar ou cancelar reservas de campo.')+stateFilterUI('bookings')+'<div class="tw ipz-admin-state-table"><table class="tb2"><thead><tr><th>Referência</th><th>Campo</th><th>Data e horário</th><th>Cliente</th><th>Pagamento</th><th>Estado da reserva</th></tr></thead><tbody>'+(a.length?a.map(function(b){return '<tr><td><b>'+E(b.ref)+'</b><br><small>'+fd(b.at)+'</small></td><td>'+E(b.court)+'</td><td>'+E((b.date||'').split('-').reverse().join('/'))+' · '+E(b.time)+(b.endTime?'–'+E(b.endTime):'')+'</td><td>'+E(b.cn)+'<br><small>'+E(b.bi||'')+'<br>'+E(b.cp||'')+'</small></td><td>'+chip(b.pay||'Pendente')+'<br><small>'+E(PM[b.pm]||b.pm||'')+' · '+money(b.price||1700)+'</small></td><td>'+stateButtons('bookings',b)+'</td></tr>'}).join(''):'<tr><td colspan="6">Sem reservas com este filtro.</td></tr>')+'</tbody></table></div>'+stateFooter('bookings')}
 document.addEventListener('click',async function(e){
  var filter=e.target.closest('[data-state-filter]');if(filter){IPZ_STATE_FILTER[filter.dataset.stateFilter]=filter.dataset.filterValue;admContent();return}
