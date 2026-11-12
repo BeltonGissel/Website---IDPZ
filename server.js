@@ -63,7 +63,8 @@ async function boot(){
  CREATE TABLE IF NOT EXISTS ipz_sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, role TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL);
  CREATE TABLE IF NOT EXISTS ipz_gallery (id TEXT PRIMARY KEY, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS ipz_tournaments (id TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
- CREATE TABLE IF NOT EXISTS ipz_tournament_photos (id TEXT PRIMARY KEY, tournament_id TEXT NOT NULL REFERENCES ipz_tournaments(id) ON DELETE CASCADE, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
+ CREATE TABLE IF NOT EXISTS ipz_tournament_photos (id TEXT PRIMARY KEY, tournament_id TEXT NOT NULL REFERENCES ipz_tournaments(id) ON DELETE CASCADE, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ CREATE TABLE IF NOT EXISTS ipz_seed_runs (key TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
  // Migração idempotente de categorias antigas (0-5) para o catálogo v2 (0-9).
  // Só converte artigos sem categoryVersion; preserva preços, imagens, stock e vendas.
  await pool.query(`UPDATE ipz_products
@@ -75,7 +76,34 @@ async function boot(){
  WHERE NOT (data ? 'categoryVersion')
    AND (data->>'c') ~ '^[0-5]$'`);
  for(const p of catalog)await pool.query('INSERT INTO ipz_products(id,data) VALUES($1,$2::jsonb) ON CONFLICT(id) DO NOTHING',[p.id,JSON.stringify({...p,pub:true})]);
+ await seedDemoTournaments();
 }
+
+// Dados fictícios para demonstração. A marca de seed impede recriação após
+// o administrador eliminar os exemplos. Não modifica torneios existentes.
+const demoTournaments = [{"id": "TOR-DEMO-OPEN-2026", "title": "Indoor Padel Open — Exemplo", "date": "2026-09-19", "capacity": 8, "participants": ["Jogador Exemplo A", "Jogador Exemplo B", "Jogador Exemplo C", "Jogador Exemplo D", "Jogador Exemplo E", "Jogador Exemplo F", "Jogador Exemplo G", "Jogador Exemplo H"], "ranking": [{"position": 1, "name": "Jogador Exemplo A", "wins": 4, "points": 120}, {"position": 2, "name": "Jogador Exemplo B", "wins": 3, "points": 105}, {"position": 3, "name": "Jogador Exemplo C", "wins": 2, "points": 90}, {"position": 4, "name": "Jogador Exemplo D", "wins": 1, "points": 75}, {"position": 5, "name": "Jogador Exemplo E", "wins": 0, "points": 60}, {"position": 6, "name": "Jogador Exemplo F", "wins": 0, "points": 45}, {"position": 7, "name": "Jogador Exemplo G", "wins": 0, "points": 30}, {"position": 8, "name": "Jogador Exemplo H", "wins": 0, "points": 15}], "status": "Concluído", "demo": true, "name": "Organização (exemplo)", "organizer": "Organização (exemplo)", "email": "exemplo@invalid.test", "phone": "000000000", "draw": [], "createdAt": "2026-09-19T12:00:00.000Z"}, {"id": "TOR-DEMO-TACA-2026", "title": "Taça Indoor de Outubro — Exemplo", "date": "2026-10-17", "capacity": 8, "participants": ["Atleta Exemplo A", "Atleta Exemplo B", "Atleta Exemplo C", "Atleta Exemplo D", "Atleta Exemplo E", "Atleta Exemplo F", "Atleta Exemplo G", "Atleta Exemplo H"], "ranking": [{"position": 1, "name": "Atleta Exemplo A", "wins": 5, "points": 110}, {"position": 2, "name": "Atleta Exemplo B", "wins": 4, "points": 98}, {"position": 3, "name": "Atleta Exemplo C", "wins": 3, "points": 86}, {"position": 4, "name": "Atleta Exemplo D", "wins": 2, "points": 74}, {"position": 5, "name": "Atleta Exemplo E", "wins": 1, "points": 62}, {"position": 6, "name": "Atleta Exemplo F", "wins": 0, "points": 50}, {"position": 7, "name": "Atleta Exemplo G", "wins": 0, "points": 38}, {"position": 8, "name": "Atleta Exemplo H", "wins": 0, "points": 26}], "status": "Concluído", "demo": true, "name": "Organização (exemplo)", "organizer": "Organização (exemplo)", "email": "exemplo@invalid.test", "phone": "000000000", "draw": [], "createdAt": "2026-10-17T12:00:00.000Z"}];
+async function seedDemoTournaments(){
+ const client=await pool.connect();
+ try{
+  await client.query('BEGIN');
+  const marker=await client.query("INSERT INTO ipz_seed_runs(key) VALUES('demo-tournaments-v13') ON CONFLICT DO NOTHING RETURNING key");
+  if(marker.rowCount){
+   for(let i=0;i<demoTournaments.length;i++){
+    const t=demoTournaments[i];
+    const inserted=await client.query('INSERT INTO ipz_tournaments(id,data) VALUES($1,$2::jsonb) ON CONFLICT DO NOTHING RETURNING id',[t.id,JSON.stringify(t)]);
+    if(inserted.rowCount){
+     const file=path.join(ROOT,`campeonato-exemplo-${i+1}.webp`);
+     const uri='data:image/webp;base64,'+fs.readFileSync(file).toString('base64');
+     await client.query('INSERT INTO ipz_tournament_photos(id,tournament_id,caption,image) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',[
+      `TFOTO-DEMO-${i+1}`,t.id,i===0?'Ilustração do Indoor Padel Open (fictícia)':'Ilustração da Taça Indoor de Outubro (fictícia)',uri
+     ]);
+    }
+   }
+  }
+  await client.query('COMMIT');
+ }catch(err){await client.query('ROLLBACK');throw err;}finally{client.release();}
+}
+
 function publicProduct(item){
  const images=Array.isArray(item.images)?item.images:[];
  return {...item,images:images.map((data,i)=>'/api/product-image/'+encodeURIComponent(item.id)+'/'+i+'?v='+crypto.createHash('sha256').update(data).digest('hex').slice(0,12))};
