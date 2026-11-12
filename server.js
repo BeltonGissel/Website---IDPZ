@@ -486,6 +486,23 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(r.startsWith('/api/admin/tournaments/')&&m==='DELETE'){
      if(s.role!=='admin')return error(res,403,'Apenas Admin');await pool.query('DELETE FROM ipz_tournaments WHERE id=$1',[r.split('/').pop()]);return json(res,200,{ok:true});
   }
+  if(r==='/api/admin/payments/status'&&m==='POST'){
+    if(s.role!=='admin')return error(res,403,'Apenas Administração pode alterar pagamentos');
+    const b=await parse(req),kind=cut(b.kind,12),id=cut(b.ref,100),action=cut(b.action,12);
+    const table=kind==='order'?'ipz_orders':kind==='booking'?'ipz_bookings':null;
+    if(!table||!['confirm','cancel'].includes(action)||!/^[A-Z]+-[A-Za-z0-9]+$/.test(id))return error(res,400,'Pedido inválido');
+    const updated=await tx(async db=>{
+      const result=await db.query(`SELECT data FROM ${table} WHERE ref=$1 FOR UPDATE`,[id]);if(!result.rows.length)bad('Pagamento inexistente',404);
+      const record=result.rows[0].data;
+      if(['Cancelado','Pagamento cancelado','Pago (confirmado)','Confirmado manualmente'].includes(record.pay))bad('Este pagamento já está finalizado.',409);
+      if(action==='confirm'&&record.pm==='card')bad('Cartões só podem ser confirmados pelo gateway.',403);
+      if(action==='confirm'&&!['emola','mpesa'].includes(record.pm))bad('Método de pagamento incompatível',400);
+      const next={...record,pay:action==='confirm'?'Confirmado manualmente':'Pagamento cancelado',paymentReviewedBy:s.email,paymentReviewedAt:new Date().toISOString(),payAuto:false};
+      await db.query(`UPDATE ${table} SET data=$2::jsonb WHERE ref=$1`,[id,JSON.stringify(next)]);
+      return next;
+    });
+    return json(res,200,{ok:true,pay:updated.pay});
+  }
   if(r==='/api/admin/payments/reconcile'&&m==='POST'){
     if(s.role!=='admin')return error(res,403,'Apenas Admin');const b=await parse(req);return json(res,200,await reconcileCard(cut(b.kind,10),cut(b.ref,100)));
   }
@@ -511,7 +528,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  }
  if(m!=='GET'&&m!=='HEAD')return error(res,405,'Método não permitido');
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
- if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
+ if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-status.css','whatsapp-shop.css','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
   res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Cache-Control':file.endsWith('.html')?'no-cache':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
