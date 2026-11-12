@@ -114,9 +114,10 @@ function hoursValue(time){return Number(String(time||'').slice(0,2));}
 function bookingInterval(record){const start=hoursValue(record.time);const duration=Number(record.duration)||60;const end=record.endTime?hoursValue(record.endTime):start+Math.ceil(duration/60);return {start,end};}
 function bookingOverlaps(other,start,end){const r=bookingInterval(other);return start<r.end&&end>r.start;}
 async function submitBooking(b){
- const date=cut(b.date,10),time=cut(b.time,5),endTime=cut(b.endTime,5),pm=cut(b.pm,10),bi=cut(b.bi,30),name=cut(b.cn,160),wallet=cut(b.wallet,24),phone=cut(b.cp,24);
+ const court=cut(b.court,30),date=cut(b.date,10),time=cut(b.time,5),endTime=cut(b.endTime,5),pm=cut(b.pm,10),bi=cut(b.bi,30),name=cut(b.cn,160),wallet=cut(b.wallet,24),phone=cut(b.cp,24);
  const from=hoursValue(time),to=hoursValue(endTime),duration=(to-from)*60;
  if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!/^\d\d:00$/.test(time)||!/^\d\d:00$/.test(endTime)||from<6||from>=23||to>23||to<=from||!name.includes(' ')||name.length<3||!/[\p{L}]/u.test(name)||!/^[\p{L}\p{N}/. -]{5,30}$/u.test(bi))bad('Data, horário, nome ou B.I. inválidos');
+ if(!courts.includes(court))bad('Selecciona um dos quatro campos disponíveis.');
  if(!phoneValid(phone))bad('Indica um contacto moçambicano válido.');
  if(!['card','emola','mpesa'].includes(pm))bad('Escolhe um método de pagamento válido');
  if(pm!=='card'&&!phoneValid(wallet,pm))bad(pm==='emola'?'e-Mola exige +25886 ou +25887.':'M-Pesa exige +25884 ou +25885.');
@@ -129,13 +130,13 @@ async function submitBooking(b){
    // O mesmo lock por data é usado para todas as novas reservas, impedindo sobreposição em concorrência.
    await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',['ipz-booking-'+date]);
    const entries=(await db.query("SELECT court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date])).rows;
-   for(const court of courts){
-     if(entries.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},from,to)))continue;
+   if(entries.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},from,to)))bad('O campo seleccionado já está ocupado neste período.',409);
+   {
      const item={ref:ref('RES'),at:new Date().toISOString(),court,date,time,endTime,cn:name,ce:pm==='card'?cut(b.ce,160):'',bi,cp:normalizePhone(phone),pm,wallet:pm==='card'?'':normalizePhone(wallet),duration,price:(duration/60)*bookingPrice,pay:pm==='card'?'Aguardando pagamento bancário':'Pagamento simulado',payAuto:pm!=='card',st:'Pendente'};
      await db.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[item.ref,court,date,time,item.st,JSON.stringify(item)]);
      return item;
    }
-   bad('Todos os quatro campos estão ocupados nesse período. Escolhe outro horário.',409);
+
  });
 }
 async function submitMessage(b){if(!cut(b.n)||!cut(b.m)||!/^\S+@\S+\.\S+$/.test(cut(b.e)))bad('Dados da mensagem inválidos');const o={ref:ref('MSG'),at:new Date().toISOString(),n:cut(b.n),e:cut(b.e,220),m:cut(b.m,2000),rd:false};await pool.query('INSERT INTO ipz_messages(ref,data) VALUES($1,$2::jsonb)',[o.ref,JSON.stringify(o)]);return o;}
@@ -330,7 +331,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||(court&&!courts.includes(court)))return error(res,400,'Data ou campo inválido');
    if((start||end)&&(!/^\d\d:00$/.test(start)||!/^\d\d:00$/.test(end)||hoursValue(start)<6||hoursValue(end)>23||hoursValue(end)<=hoursValue(start)))return error(res,400,'Intervalo de horas inválido');
    const rows=await pool.query("SELECT court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date]);
-   if(start&&end){const st=hoursValue(start),en=hoursValue(end);const free=courts.filter(c=>!rows.rows.some(x=>x.court===c&&bookingOverlaps({...x.data,time:x.booking_time},st,en)));return json(res,200,{availableCount:free.length,start,end,date,price:(en-st)*bookingPrice});}
+   if(start&&end){const st=hoursValue(start),en=hoursValue(end);const free=courts.filter(c=>!rows.rows.some(x=>x.court===c&&bookingOverlaps({...x.data,time:x.booking_time},st,en)));return json(res,200,{availableCount:free.length,availableCourts:free,occupiedCourts:courts.filter(c=>!free.includes(c)),start,end,date,price:(en-st)*bookingPrice});}
    const available=Object.fromEntries(times.map(t=>[t,courts.length-courts.filter(c=>rows.rows.some(x=>x.court===c&&bookingOverlaps({...x.data,time:x.booking_time},hoursValue(t),hoursValue(t)+1))).length]));
    if(court)return json(res,200,{occupied:times.filter(t=>rows.rows.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},hoursValue(t),hoursValue(t)+1)))});
    return json(res,200,{available,times,price:bookingPrice,duration:60});
