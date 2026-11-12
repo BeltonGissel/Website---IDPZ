@@ -276,3 +276,12 @@ A API cria a nova tabela no arranque, sem alterar as reservas, produtos ou torne
 **Publicação:** substituir `index.html`, `script.js`, `community.js`, `community.css`, `server.js` e `README.md` na raiz do GitHub `Website---IDPZ`. O Root Directory no Render continua vazio. Nenhuma credencial adicional do Neon é necessária.
 
 **Validação:** sintaxe JS e estrutura do pacote testadas; ainda é necessário testar as consultas SQL e os uploads no Neon real antes de uso comercial.
+
+
+## V13 — Dois campeonatos de exemplo
+
+Ao publicar esta versão no Render, o servidor insere **uma única vez** no Neon dois torneios concluídos: `Indoor Padel Open — Exemplo` (19/09/2026) e `Taça Indoor de Outubro — Exemplo` (17/10/2026). Cada um tem oito participantes fictícios, ranking de exemplo e uma imagem **ilustrativa**, não uma fotografia real.
+
+Os exemplos aparecem em **Nossos Torneios → Torneios Realizados** e abrem a página de detalhe. O Admin pode editar o ranking, acrescentar fotos reais ou apagar os exemplos. Um marcador persistente `ipz_seed_runs` impede que sejam recriados após serem apagados. Os torneios existentes não são modificados.
+
+**Para actualizar:** substituir `server.js`, `community.js`, `README.md` e adicionar `campeonato-exemplo-1.webp` e `campeonato-exemplo-2.webp` na raiz do repositório. Não é preciso configurar novas variáveis no Render. As imagens locais são usadas apenas durante a inserção inicial; as cópias ficam armazenadas no Neon.
