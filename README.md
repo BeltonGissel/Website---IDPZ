@@ -190,3 +190,14 @@ Os ficheiros `animations.css` e `animations.js` estão na raiz. O `index.html` r
 - Acessibilidade: respeita `prefers-reduced-motion`. Não interfere nos elementos do painel Admin/Recepcionista.
 
 **Para publicar:** substitui os ficheiros na raiz do GitHub, inclui `animations.css` e `animations.js`, e aguarda o redeploy no Render. Mantém `Root Directory` vazio.
+
+
+## Reservas v5 e números moçambicanos
+
+- Processo de reserva: data (dd/mm), hora, nome e apelido, B.I., método de pagamento.
+- Uma hora por reserva, com início possível de 06h00 a 22h00 e encerramento às 23h00, preço de demonstração de **1.700 MT**.
+- O servidor atribui automaticamente o primeiro dos quatro campos disponível para o horário e impede a duplicação no PostgreSQL.
+- Telefones: prefixo visual +258 e 9 dígitos nacionais. e-Mola só 86/87; M-Pesa só 84/85. Validação no navegador e no servidor em compras e reservas.
+- Cartão é apenas uma opção simulada, sem recolha de dados bancários. Não há cobrança real.
+- Dados de B.I. são pessoais: restringir acessos, retenção e exportações; considerar se é necessário recolhê-los antes da operação comercial real.
+- Esta versão altera `script.js`, `server.js`, `index.html`, `admin-enhancements.css` e `README.md`. O Neon mantém as tabelas existentes.
