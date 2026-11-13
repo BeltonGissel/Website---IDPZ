@@ -4,6 +4,7 @@
  const PATHS={
    'admin':'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
    'admin-pedidos':'<path d="M4 7h16l-1.2 13H5.2L4 7Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/>',
+   'admin-calendario':'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M7 14h3m4 0h3M7 18h3"/>',
    'admin-reservas':'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 15l2 2 5-5"/>',
    'admin-produtos':'<path d="M3 7 12 3l9 4-9 4-9-4ZM3 7v10l9 4 9-4V7M12 11v10"/>',
    'admin-galeria':'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
