@@ -122,3 +122,23 @@ body.adm .ad-main .ipz-state-footer button.ipz-save-states:disabled {
 @media(prefers-reduced-motion:reduce) {
   body.adm .ad-main .ipz-state-buttons button.ipz-state-choice {transition:none!important;transform:none!important}
 }
+
+
+/* V33: filtros e estados seleccionados usam o único verde institucional. */
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip.is-selected,
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip[aria-pressed="true"],
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice.is-selected,
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice[aria-pressed="true"],
+body.adm .ad-main .ipz-state-footer button.ipz-save-states:not(:disabled){
+  background:#CFF902 !important;border-color:#CFF902 !important;color:#142015 !important;
+  box-shadow:0 4px 14px rgba(124,153,0,.14) !important;
+}
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip.is-selected:hover,
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice.is-selected:hover,
+body.adm .ad-main .ipz-state-footer button.ipz-save-states:not(:disabled):hover{
+  background:#BCE600 !important;border-color:#BCE600 !important;color:#142015 !important;
+}
+body.adm .ad-main .ipz-status-toolbar button.ipz-filter-chip:not(.is-selected):hover,
+body.adm .ad-main .ipz-state-buttons button.ipz-state-choice:not(.is-selected):hover{
+  background:#F7FBEA !important;border-color:#CFF902 !important;color:#142015 !important;
+}
