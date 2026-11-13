@@ -1,29 +1,19 @@
-# Indoor Padel Zone V26 — estabilização (estrutura original preservada)
+# Indoor Padel Zone V28 — Fecho mensal e relatórios Excel
 
-Este pacote mantém **todos os ficheiros na raiz** e os nomes utilizados na versão V25. Não altera a lógica de pagamentos: loja e reservas continuam a usar WhatsApp **+258 87 738 8644**, sem gateway.
+## Funcionamento
 
-## Alterações
-
-- `server.js`: permite `booking-whatsapp.css` e imagens dos torneios, verifica PostgreSQL em `/health`, aplica cabeçalhos de segurança, limita tentativas de reservas/mensagens por instância, cria `ipz_audit_log`, permite consultar auditoria em `GET /api/admin/audit` (Admin), regista transições de estados, omite emails e telefones dos organizadores nas respostas públicas dos torneios e torna reservas idempotentes via `requestId`.
-- `script.js`: envia `requestId` estável por formulário de reserva, impedindo duplicações quando a rede falha e o cliente tenta de novo.
-- `package.json`: adiciona `npm run check` / `npm test`.
-- `tests.js`: verifica sintaxe de todos os JS, caminhos de CSS/JS no HTML e autorização pelo servidor.
-- Nenhuma tabela ou registo existente é apagado. Duas novas estruturas são criadas se não existirem: índice por `requestId` e tabela de auditoria.
+- **Painel:** às 00h00 do dia 1, hora de Moçambique, os indicadores de compras, reservas e mensagens passam a mostrar apenas os registos do mês que começa. Nunca apagamos as tabelas Neon, reservas futuras, stock ou histórico por causa de um fecho mensal.
+- **Compras e Reservas:** as listas operacionais continuam disponíveis (incluindo pedidos antigos que precisem de intervenção); os indicadores do dashboard referem-se ao mês corrente.
+- **Relatórios:** menu `Relatórios` imediatamente depois de `Mensagens` para a conta Admin. Permite exportar o mês actual e os **três meses anteriores**. Cada ficheiro tem folhas de Resumo, Compras, Reservas, Mensagens, Produtos, Torneios, Galeria e Evolução diária.
+- **Retenção de três meses:** o endpoint rejeita meses fora da janela permitida (HTTP 410). Os ficheiros são criados *sob pedido* em memória e enviados ao browser, nunca guardados no Render, por isso não existe ficheiro no servidor para apagar. Os dados originais no Neon não são eliminados. Os Excel já descarregados para outro dispositivo não podem ser eliminados remotamente.
+- **Fuso horário:** Africa/Maputo (UTC+02:00), inclusive na selecção do mês.
+- **Segurança:** API de relatórios requer sessão de Admin e valida mês e permissões no servidor.
 
 ## Publicação
+1. Substitui `server.js`, `script.js`, `index.html` e `tests.js`, adiciona `monthly-reports.css` e este README na raiz do repositório.
+2. No Render usa build `npm install && npm run check` e start `npm start`.
+3. Testa `#admin-relatorios` com a conta Admin. Testa um mês válido e tenta aceder a um mês com mais de três meses, que deverá ser rejeitado.
+4. Não necessitas de alterar as variáveis do Neon nem apagar dados.
 
-1. Faz backup do repositório e da base Neon.
-2. Na raiz do GitHub, substitui `server.js`, `script.js` e `package.json`; adiciona `tests.js` e `README-V26.md`. Mantém os restantes ficheiros do pacote.
-3. No Render, mantém Root Directory vazio. **Build Command:** `npm install && npm run check`. **Start Command:** `npm start`.
-4. Não alteres `DATABASE_URL`, `ADMIN_PASSWORD`, `RECEPTION_PASSWORD`, `NODE_ENV`, `COOKIE_SECURE`.
-5. Após Live, visita `/health`; confirma `database: connected`. Testa reserva, loja WhatsApp e alterações de estado no Admin.
-
-## Limites conhecidos / próximos passos
-
-- `/api/admin/audit` é endpoint para consulta técnica; ainda não tem uma aba visual dedicada.
-- Os limites anti-spam são por processo e não substituem rate limiting distribuído.
-- Reservas pendentes **não expiram automaticamente**, porque cancelar pedidos de clientes sem uma política operacional pode ser arriscado. Recomenda-se acordar um prazo de confirmação com a equipa antes de implementar expiração.
-- O WhatsApp não confirma o envio da mensagem ao servidor. Pedidos registados não significam vendas pagas.
-- Imagens continuam guardadas no Neon; migração para armazenamento de objectos é uma etapa futura, pois requer configuração de fornecedor.
-- Login continua dependente dos emails administrativos existentes; 2FA e contas adicionais exigem implementação separada.
-- O teste de integração Neon/Render deve ser feito após publicação.
+## Notas de auditoria
+O Excel reproduz o estado actual dos registos pertencentes ao mês escolhido; se o estado de uma compra antiga for modificado posteriormente, uma exportação nova reflecte o estado actualizado. Para fecho financeiro irrevogável, adicionar posteriormente snapshots mensais imutáveis.
