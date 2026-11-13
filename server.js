@@ -66,7 +66,9 @@ async function boot(){
  CREATE TABLE IF NOT EXISTS ipz_tournament_photos (id TEXT PRIMARY KEY, tournament_id TEXT NOT NULL REFERENCES ipz_tournaments(id) ON DELETE CASCADE, caption TEXT NOT NULL, image TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS ipz_seed_runs (key TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now());
  CREATE TABLE IF NOT EXISTS ipz_audit_log (id BIGSERIAL PRIMARY KEY, happened_at TIMESTAMPTZ NOT NULL DEFAULT now(), actor_email TEXT NOT NULL, actor_role TEXT NOT NULL, entity_type TEXT NOT NULL, entity_ref TEXT NOT NULL, previous_status TEXT, new_status TEXT);
- CREATE INDEX IF NOT EXISTS ipz_audit_log_happened_at ON ipz_audit_log(happened_at DESC);`);
+ CREATE INDEX IF NOT EXISTS ipz_audit_log_happened_at ON ipz_audit_log(happened_at DESC);
+ CREATE TABLE IF NOT EXISTS ipz_court_blocks (id TEXT PRIMARY KEY, court TEXT NOT NULL, block_date DATE NOT NULL, start_hour INTEGER NOT NULL, end_hour INTEGER NOT NULL, reason TEXT NOT NULL, created_by TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), CHECK(start_hour >= 6 AND end_hour <= 23 AND end_hour > start_hour));
+ CREATE INDEX IF NOT EXISTS ipz_court_blocks_day ON ipz_court_blocks(block_date,court);`);
  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS ipz_orders_request_id ON ipz_orders ((data->>'requestId')) WHERE data ? 'requestId'");
  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS ipz_bookings_request_id ON ipz_bookings ((data->>'requestId')) WHERE data ? 'requestId'");
  // Migração idempotente de categorias antigas (0-5) para o catálogo v2 (0-9).
@@ -150,6 +152,63 @@ async function submitWhatsAppOrder(b,req){
 function hoursValue(time){return Number(String(time||'').slice(0,2));}
 function bookingInterval(record){const start=hoursValue(record.time);const duration=Number(record.duration)||60;const end=record.endTime?hoursValue(record.endTime):start+Math.ceil(duration/60);return {start,end};}
 function bookingOverlaps(other,start,end){const r=bookingInterval(other);return start<r.end&&end>r.start;}
+// Calendário operacional V34: bloqueios e reservas usam o mesmo lock de data.
+function validDay(value){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+ const date=new Date(value+'T12:00:00Z');return !Number.isNaN(date.valueOf())&&date.toISOString().slice(0,10)===value;
+}
+function validHours(start,end){return Number.isInteger(start)&&Number.isInteger(end)&&start>=6&&end<=23&&end>start;}
+async function lockBookingDates(db, dates){for(const day of [...new Set(dates)].sort())await db.query('SELECT pg_advisory_xact_lock(hashtext($1))',['ipz-booking-'+day]);}
+async function blockConflicts(db,day,court,start,end){
+ const result=await db.query('SELECT start_hour,end_hour FROM ipz_court_blocks WHERE block_date=$1 AND court=$2',[day,court]);
+ return result.rows.some(x=>start<x.end_hour&&end>x.start_hour);
+}
+async function calendarData(from,to){
+ const [bookings,blocks]=await Promise.all([
+  pool.query('SELECT data FROM ipz_bookings WHERE booking_date >= $1 AND booking_date <= $2 ORDER BY booking_date,booking_time,court',[from,to]),
+  pool.query('SELECT id,court,block_date::text AS date,start_hour AS start,end_hour AS "end",reason,created_by FROM ipz_court_blocks WHERE block_date >= $1 AND block_date <= $2 ORDER BY block_date,start_hour',[from,to])
+ ]);
+ return {bookings:bookings.rows.map(x=>{const b=x.data;return {ref:b.ref,date:b.date,court:b.court,time:b.time,endTime:b.endTime||String(hoursValue(b.time)+Math.ceil((Number(b.duration)||60)/60)).padStart(2,'0')+':00',cn:b.cn,cp:b.cp,st:b.st,price:b.price,at:b.at};}),blocks:blocks.rows,courts,times};
+}
+async function createCourtBlock(body,actor){
+ const date=cut(body.date,10),court=cut(body.court,30),start=Number(body.start),end=Number(body.end),reason=cut(body.reason,180);
+ if(!validDay(date)||!courts.includes(court)||!validHours(start,end)||!reason)bad('Data, campo, horário ou motivo inválidos');
+ return tx(async db=>{
+  await lockBookingDates(db,[date]);
+  if(await blockConflicts(db,date,court,start,end))bad('Já existe um bloqueio neste intervalo',409);
+  const q=await db.query("SELECT data FROM ipz_bookings WHERE booking_date=$1 AND court=$2 AND status <> 'Cancelada'",[date,court]);
+  if(q.rows.some(x=>bookingOverlaps(x.data,start,end)))bad('Já existe uma reserva activa neste período',409);
+  const id=ref('BLQ');await db.query('INSERT INTO ipz_court_blocks(id,court,block_date,start_hour,end_hour,reason,created_by) VALUES($1,$2,$3,$4,$5,$6,$7)',[id,court,date,start,end,reason,actor.email]);
+  await db.query('INSERT INTO ipz_audit_log(actor_email,actor_role,entity_type,entity_ref,previous_status,new_status) VALUES($1,$2,$3,$4,$5,$6)',[actor.email,actor.role,'block',id,null,'Criado: '+date+' '+court+' '+start+'-'+end]);
+  return id;
+ });
+}
+async function deleteCourtBlock(id,actor){
+ return tx(async db=>{
+  const q=await db.query('SELECT block_date::text AS date FROM ipz_court_blocks WHERE id=$1',[id]);if(!q.rows.length)bad('Bloqueio não encontrado',404);
+  await lockBookingDates(db,[q.rows[0].date]);
+  await db.query('DELETE FROM ipz_court_blocks WHERE id=$1',[id]);
+  await db.query('INSERT INTO ipz_audit_log(actor_email,actor_role,entity_type,entity_ref,previous_status,new_status) VALUES($1,$2,$3,$4,$5,$6)',[actor.email,actor.role,'block',id,'Bloqueado','Removido']);
+ });
+}
+async function rescheduleBooking(id,body,actor){
+ const date=cut(body.date,10),court=cut(body.court,30),time=cut(body.time,5),endTime=cut(body.endTime,5),start=hoursValue(time),end=hoursValue(endTime);
+ if(!validDay(date)||!courts.includes(court)||!/^\d\d:00$/.test(time)||!/^\d\d:00$/.test(endTime)||!validHours(start,end))bad('Dados de reagendamento inválidos');
+ return tx(async db=>{
+  const initial=await db.query('SELECT booking_date::text AS date FROM ipz_bookings WHERE ref=$1',[id]);if(!initial.rows.length)bad('Reserva não encontrada',404);
+  await lockBookingDates(db,[initial.rows[0].date,date]);
+  const row=await db.query('SELECT data FROM ipz_bookings WHERE ref=$1 FOR UPDATE',[id]);if(!row.rows.length)bad('Reserva não encontrada',404);
+  const current=row.rows[0].data;
+  if(current.st==='Cancelada')bad('Para reagendar uma reserva cancelada, reactiva-a primeiro',409);
+  if(await blockConflicts(db,date,court,start,end))bad('O campo está bloqueado neste intervalo',409);
+  const conflict=await db.query("SELECT ref,data FROM ipz_bookings WHERE booking_date=$1 AND court=$2 AND status <> 'Cancelada' AND ref<>$3",[date,court,id]);
+  if(conflict.rows.some(x=>bookingOverlaps(x.data,start,end)))bad('Já existe outra reserva neste intervalo',409);
+  const next={...current,date,court,time,endTime,duration:(end-start)*60,price:(end-start)*bookingPrice};
+  try{await db.query('UPDATE ipz_bookings SET court=$2,booking_date=$3,booking_time=$4,data=$5::jsonb WHERE ref=$1',[id,court,date,time,JSON.stringify(next)]);}catch(e){if(e.code==='23505')bad('Horário já ocupado',409);throw e;}
+  await db.query('INSERT INTO ipz_audit_log(actor_email,actor_role,entity_type,entity_ref,previous_status,new_status) VALUES($1,$2,$3,$4,$5,$6)',[actor.email,actor.role,'reschedule',id,current.date+' '+current.court+' '+current.time+'-'+current.endTime,date+' '+court+' '+time+'-'+endTime]);
+  return {ref:id,...next};
+ });
+}
 async function submitBooking(b){
  const requestId=cut(b.requestId,80);
  if(!/^[a-f0-9-]{36}$/i.test(requestId))bad('Identificador de reserva inválido');
@@ -168,6 +227,7 @@ async function submitBooking(b){
    if(previous.rows.length)return previous.rows[0].data;
    const entries=(await db.query("SELECT court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date])).rows;
    if(entries.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},from,to)))bad('O campo seleccionado já está ocupado neste período.',409);
+   if(await blockConflicts(db,date,court,from,to))bad('O campo está indisponível devido a um bloqueio operacional.',409);
    {
      const item={ref:ref('RES'),requestId,at:new Date().toISOString(),court,date,time,endTime,cn:name,bi,cp:normalizePhone(phone),channel:'whatsapp',contactWhatsApp:'+258 87 738 8644',duration,price:(duration/60)*bookingPrice,pay:'A combinar pelo WhatsApp',payAuto:false,st:'Pendente'};
      await db.query('INSERT INTO ipz_bookings(ref,court,booking_date,booking_time,status,data) VALUES($1,$2,$3,$4,$5,$6::jsonb)',[item.ref,court,date,time,item.st,JSON.stringify(item)]);
@@ -214,6 +274,7 @@ async function modifyRecord(c,payload,actor={email:'system',role:'system'}){retu
       const entries=(await db.query("SELECT ref,court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[current.date])).rows;
       const it=bookingInterval(current);
       if(entries.some(x=>x.ref!==patch.ref&&x.court===current.court&&bookingOverlaps({...x.data,time:x.booking_time},it.start,it.end)))bad('Conflito: o campo está ocupado neste intervalo.',409);
+      if(await blockConflicts(db,current.date,current.court,it.start,it.end))bad('Conflito: o campo está bloqueado neste intervalo.',409);
     }
     try{await db.query('UPDATE ipz_bookings SET status=$2,data=$3::jsonb WHERE ref=$1',[patch.ref,next.st,JSON.stringify(next)]);}catch(e){if(e.code==='23505')bad('Conflito: este campo e horário já estão ocupados',409);throw e;}
     if(current.st!==next.st)await db.query('INSERT INTO ipz_audit_log(actor_email,actor_role,entity_type,entity_ref,previous_status,new_status) VALUES($1,$2,$3,$4,$5,$6)',[actor.email,actor.role,c,patch.ref,current.st,next.st]);
@@ -410,9 +471,12 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||(court&&!courts.includes(court)))return error(res,400,'Data ou campo inválido');
    if((start||end)&&(!/^\d\d:00$/.test(start)||!/^\d\d:00$/.test(end)||hoursValue(start)<6||hoursValue(end)>23||hoursValue(end)<=hoursValue(start)))return error(res,400,'Intervalo de horas inválido');
    const rows=await pool.query("SELECT court,booking_time,data FROM ipz_bookings WHERE booking_date=$1 AND status <> 'Cancelada'",[date]);
-   if(start&&end){const st=hoursValue(start),en=hoursValue(end);const free=courts.filter(c=>!rows.rows.some(x=>x.court===c&&bookingOverlaps({...x.data,time:x.booking_time},st,en)));return json(res,200,{availableCount:free.length,availableCourts:free,occupiedCourts:courts.filter(c=>!free.includes(c)),start,end,date,price:(en-st)*bookingPrice});}
-   const available=Object.fromEntries(times.map(t=>[t,courts.length-courts.filter(c=>rows.rows.some(x=>x.court===c&&bookingOverlaps({...x.data,time:x.booking_time},hoursValue(t),hoursValue(t)+1))).length]));
-   if(court)return json(res,200,{occupied:times.filter(t=>rows.rows.some(x=>x.court===court&&bookingOverlaps({...x.data,time:x.booking_time},hoursValue(t),hoursValue(t)+1)))});
+   const blocks=(await pool.query('SELECT court,start_hour,end_hour FROM ipz_court_blocks WHERE block_date=$1',[date])).rows;
+   const blocked=(c,st,en)=>blocks.some(b=>b.court===c&&st<b.end_hour&&en>b.start_hour);
+   const occupied=(c,st,en)=>blocked(c,st,en)||rows.rows.some(x=>x.court===c&&bookingOverlaps({...x.data,time:x.booking_time},st,en));
+   if(start&&end){const st=hoursValue(start),en=hoursValue(end);const free=courts.filter(c=>!occupied(c,st,en));return json(res,200,{availableCount:free.length,availableCourts:free,occupiedCourts:courts.filter(c=>!free.includes(c)),start,end,date,price:(en-st)*bookingPrice});}
+   const available=Object.fromEntries(times.map(t=>[t,courts.length-courts.filter(c=>occupied(c,hoursValue(t),hoursValue(t)+1)).length]));
+   if(court)return json(res,200,{occupied:times.filter(t=>occupied(court,hoursValue(t),hoursValue(t)+1))});
    return json(res,200,{available,times,price:bookingPrice,duration:60});
   }
   if(r==='/api/session'&&m==='GET'){const s=await session(req);return json(res,200,{admin:!!s,role:s?.role||null,email:s?.email||null,online:true});}
@@ -442,6 +506,23 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   }
   const s=await session(req);if(!s)return error(res,401,'Inicia sessão para aceder ao painel');
 
+  // Agenda operacional: todas as rotas exigem sessão, alterações respeitam permissões.
+  if(r==='/api/admin/calendar'&&m==='GET'){
+   const from=u.searchParams.get('from')||'',to=u.searchParams.get('to')||'';
+   if(!validDay(from)||!validDay(to)||to<from||(Date.parse(to+'T00:00:00Z')-Date.parse(from+'T00:00:00Z'))/86400000>42)return error(res,400,'Intervalo inválido (máximo 43 dias)');
+   return json(res,200,await calendarData(from,to));
+  }
+  if(r==='/api/admin/calendar/blocks'&&m==='POST'){
+   if(s.role!=='admin')return error(res,403,'Apenas o Admin pode bloquear horários');
+   const id=await createCourtBlock(await parse(req),s);return json(res,201,{ok:true,id});
+  }
+  const removeBlock=r.match(/^\/api\/admin\/calendar\/blocks\/(BLQ-[A-Za-z0-9]+)$/);
+  if(removeBlock&&m==='DELETE'){
+   if(s.role!=='admin')return error(res,403,'Apenas o Admin pode remover bloqueios');
+   await deleteCourtBlock(removeBlock[1],s);return json(res,200,{ok:true});
+  }
+  const moveBooking=r.match(/^\/api\/admin\/calendar\/bookings\/(RES-[A-Za-z0-9]+)\/reschedule$/);
+  if(moveBooking&&m==='PATCH')return json(res,200,{ok:true,booking:await rescheduleBooking(moveBooking[1],await parse(req),s)});
   if(r==='/api/admin/gallery'&&m==='POST'){
     if(s.role!=='admin')return error(res,403,'Apenas Admin');const b=await parse(req,400000),id=ref('GAL');
     const caption=cut(b.caption,160);if(!caption)bad('Indica uma legenda');
@@ -533,7 +614,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  }
  if(m!=='GET'&&m!=='HEAD')return error(res,405,'Método não permitido');
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
- if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-status.css','monthly-reports.css','whatsapp-shop.css','booking-whatsapp.css','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
+ if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-calendar.js','admin-calendar.css','admin-status.css','monthly-reports.css','whatsapp-shop.css','booking-whatsapp.css','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
   res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY','Cache-Control':/\.(?:html|js|css)$/.test(file)?'no-cache, must-revalidate':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
