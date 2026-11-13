@@ -28,6 +28,35 @@ const normalizePhone=v=>'+258'+String(v||'').replace(/\D/g,'').replace(/^258/,''
 const phoneValid=(v,method)=>{const n=normalizePhone(v);return method==='emola'?/^\+2588[67]\d{7}$/.test(n):method==='mpesa'?/^\+2588[45]\d{7}$/.test(n):/^\+2588\d{8}$/.test(n);};
 const ordersStatuses=['Por processar','Em preparação','Pronto','Entregue','Cancelado'];
 const bookingStatuses=['Pendente','Confirmada','Cancelada'];
+// Perfis de painel e controlo de acesso (V35). Apenas o proprietário pode administrá-los.
+const PERMISSION_KEYS = [
+ 'dashboard.view','orders.view','orders.edit','bookings.view','bookings.edit',
+ 'calendar.view','calendar.edit','calendar.blocks','products.view','products.edit',
+ 'gallery.view','gallery.edit','tournaments.view','tournaments.edit',
+ 'messages.view','messages.edit','reports.view'
+];
+const RECEPTION_PERMISSIONS = ['dashboard.view','orders.view','orders.edit','bookings.view','bookings.edit','calendar.view','calendar.edit','messages.view','messages.edit'];
+const OWNER_EMAIL='admin@idpz.com', RECEPTION_EMAIL='geral@idpz.com';
+function normalizePermissions(value){if(!Array.isArray(value))bad('Permissões inválidas');const perms=new Set(value.filter(x=>PERMISSION_KEYS.includes(x)));for(const key of [...perms]){if(key.endsWith('.edit'))perms.add(key.replace('.edit','.view'));if(key==='calendar.blocks')perms.add('calendar.view');}return [...perms];}
+function hasAccess(session,key){return !!session&&(session.email===OWNER_EMAIL&&key==='panels.manage'||(Array.isArray(session.permissions)&&session.permissions.includes(key)));}
+function requireAccess(session,key){if(!hasAccess(session,key))bad('Sem permissão para esta operação',403);}
+function hashPassword(password){const salt=crypto.randomBytes(16).toString('hex');const digest=crypto.scryptSync(password,salt,64).toString('hex');return salt+':'+digest;}
+function verifyPassword(password,hash){try{const [salt,encoded]=hash.split(':');const actual=crypto.scryptSync(String(password),salt,64);return crypto.timingSafeEqual(actual,Buffer.from(encoded,'hex'));}catch{return false;}}
+function validateStaffEmail(email){if(!/^[^\s@]{1,80}@[^\s@]{1,120}\.[^\s@]{2,}$/.test(email))bad('Email inválido');return email;}
+async function allPanels(){const q=await pool.query('SELECT id,name,permissions,protected FROM ipz_access_panels ORDER BY protected DESC,name');return q.rows;}
+async function sessionInfo(req){const raw=cookies(req);if(!/^[a-f0-9]{64}$/.test(raw))return null;
+ const key=crypto.createHash('sha256').update(raw).digest('hex');
+ const q=await pool.query('SELECT s.email,s.role,s.active_panel,u.name,u.panels,u.active FROM ipz_sessions s LEFT JOIN ipz_staff_users u ON u.email=s.email WHERE s.token_hash=$1 AND s.expires_at>now()',[key]);
+ if(!q.rows.length)return null;const row=q.rows[0],owner=row.email===OWNER_EMAIL;
+ if(!owner&&row.active===false)return null;
+ const allowed=owner?(await allPanels()).map(p=>p.id):(Array.isArray(row.panels)?row.panels:[]);
+ const active=allowed.includes(row.active_panel)?row.active_panel:allowed[0];if(!active)return null;
+ const panels=await pool.query('SELECT id,name,permissions FROM ipz_access_panels WHERE id=ANY($1::text[])',[allowed]);
+ const available=panels.rows.filter(p=>allowed.includes(p.id));const chosen=available.find(x=>x.id===active);
+ if(!chosen)return null;
+ return {email:row.email,role:row.role,name:row.name||(owner?'Administração':'Recepcionista'),panelId:chosen.id,panelName:chosen.name,panels:available,permissions:chosen.permissions,canManagePanels:owner};
+}
+function publicSessionInfo(s){return {admin:!!s,role:s?.role||null,email:s?.email||null,name:s?.name||null,panelId:s?.panelId||null,panelName:s?.panelName||null,panels:s?.panels?.map(p=>({id:p.id,name:p.name}))||[],permissions:s?.permissions||[],canManagePanels:!!s?.canManagePanels,online:true};}
 const attempts=new Map();
 const communityWrites=new Map();
 function limitCommunity(req){
@@ -51,9 +80,7 @@ function setCookie(token,clear=false){return `ipz_session=${token}; HttpOnly; Sa
 function cookies(req){return (req.headers.cookie||'').split(';').map(v=>v.trim()).find(v=>v.startsWith('ipz_session='))?.slice(12)||'';}
 function sameOrigin(req){const o=req.headers.origin;if(!o)return true;try{return new URL(o).host===req.headers.host}catch{return false;}}
 function parse(req,maxBytes=80000){return new Promise((resolve,reject)=>{let data='',ended=false;req.on('data',b=>{data+=b;if(Buffer.byteLength(data,'utf8')>maxBytes&&!ended){ended=true;reject(Object.assign(new Error('Corpo demasiado grande'),{status:413}));req.destroy();}});req.on('end',()=>{if(ended)return;try{resolve(JSON.parse(data||'{}'))}catch{reject(Object.assign(new Error('JSON inválido'),{status:400}))}});req.on('error',reject);});}
-async function session(req){const raw=cookies(req);if(!/^[a-f0-9]{64}$/.test(raw))return null;
- const key=crypto.createHash('sha256').update(raw).digest('hex');
- const q=await pool.query('SELECT role,email FROM ipz_sessions WHERE token_hash=$1 AND expires_at>now()',[key]);return q.rows[0]||null;}
+async function session(req){return sessionInfo(req);}
 async function boot(){
  await pool.query(`CREATE TABLE IF NOT EXISTS ipz_products (id TEXT PRIMARY KEY, data JSONB NOT NULL);
  CREATE TABLE IF NOT EXISTS ipz_orders (ref TEXT PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
@@ -68,7 +95,13 @@ async function boot(){
  CREATE TABLE IF NOT EXISTS ipz_audit_log (id BIGSERIAL PRIMARY KEY, happened_at TIMESTAMPTZ NOT NULL DEFAULT now(), actor_email TEXT NOT NULL, actor_role TEXT NOT NULL, entity_type TEXT NOT NULL, entity_ref TEXT NOT NULL, previous_status TEXT, new_status TEXT);
  CREATE INDEX IF NOT EXISTS ipz_audit_log_happened_at ON ipz_audit_log(happened_at DESC);
  CREATE TABLE IF NOT EXISTS ipz_court_blocks (id TEXT PRIMARY KEY, court TEXT NOT NULL, block_date DATE NOT NULL, start_hour INTEGER NOT NULL, end_hour INTEGER NOT NULL, reason TEXT NOT NULL, created_by TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), CHECK(start_hour >= 6 AND end_hour <= 23 AND end_hour > start_hour));
- CREATE INDEX IF NOT EXISTS ipz_court_blocks_day ON ipz_court_blocks(block_date,court);`);
+ CREATE INDEX IF NOT EXISTS ipz_court_blocks_day ON ipz_court_blocks(block_date,court);
+ CREATE TABLE IF NOT EXISTS ipz_access_panels (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, permissions JSONB NOT NULL, protected BOOLEAN NOT NULL DEFAULT false, created_at TIMESTAMPTZ NOT NULL DEFAULT now());
+ CREATE TABLE IF NOT EXISTS ipz_staff_users (email TEXT PRIMARY KEY, name TEXT NOT NULL, password_hash TEXT, panels TEXT[] NOT NULL, active BOOLEAN NOT NULL DEFAULT true, created_at TIMESTAMPTZ NOT NULL DEFAULT now());`);
+ await pool.query('ALTER TABLE ipz_sessions ADD COLUMN IF NOT EXISTS active_panel TEXT');
+ await pool.query('INSERT INTO ipz_access_panels(id,name,permissions,protected) VALUES($1,$2,$3::jsonb,true) ON CONFLICT(id) DO NOTHING',['admin','Administração',JSON.stringify(PERMISSION_KEYS)]);
+ await pool.query('INSERT INTO ipz_access_panels(id,name,permissions,protected) VALUES($1,$2,$3::jsonb,true) ON CONFLICT(id) DO NOTHING',['recepcao','Recepção',JSON.stringify(RECEPTION_PERMISSIONS)]);
+ await pool.query('INSERT INTO ipz_staff_users(email,name,password_hash,panels) VALUES($1,$2,NULL,$3::text[]) ON CONFLICT(email) DO NOTHING',[RECEPTION_EMAIL,'Recepcionista',['recepcao']]);
  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS ipz_orders_request_id ON ipz_orders ((data->>'requestId')) WHERE data ? 'requestId'");
  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS ipz_bookings_request_id ON ipz_bookings ((data->>'requestId')) WHERE data ? 'requestId'");
  // Migração idempotente de categorias antigas (0-5) para o catálogo v2 (0-9).
@@ -479,16 +512,25 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    if(court)return json(res,200,{occupied:times.filter(t=>occupied(court,hoursValue(t),hoursValue(t)+1))});
    return json(res,200,{available,times,price:bookingPrice,duration:60});
   }
-  if(r==='/api/session'&&m==='GET'){const s=await session(req);return json(res,200,{admin:!!s,role:s?.role||null,email:s?.email||null,online:true});}
+  if(r==='/api/session'&&m==='GET'){const s=await session(req);return json(res,200,publicSessionInfo(s));}
   if(r==='/api/login'&&m==='POST'){
    const ip=(req.headers['x-forwarded-for']||req.socket.remoteAddress||'').toString().split(',')[0].trim(),prev=attempts.get(ip)||{n:0,until:0};
    if(prev.until>Date.now())return error(res,429,'Demasiadas tentativas. Tenta daqui a 15 minutos.');
-   const b=await parse(req),email=cut(b.email,200).toLowerCase(),acc=passwords[email];
-   if(!acc||!safeCompare(b.password||'',acc.password)){prev.n++;if(prev.n>=5){prev.n=0;prev.until=Date.now()+15*60000;}attempts.set(ip,prev);return error(res,401,'Email ou palavra-passe inválidos');}
+   const b=await parse(req),email=cut(b.email,200).toLowerCase();
+   const predefined=passwords[email];
+   const userResult=await pool.query('SELECT email,name,password_hash,panels,active FROM ipz_staff_users WHERE email=$1',[email]);
+   const user=userResult.rows[0];
+   const valid=!!(predefined?safeCompare(b.password||'',predefined.password):(user?.active&&user?.password_hash&&verifyPassword(b.password||'',user.password_hash)));
+   if(!valid||(!predefined&&!user?.panels?.length)){prev.n++;if(prev.n>=5){prev.n=0;prev.until=Date.now()+15*60000;}attempts.set(ip,prev);return error(res,401,'Email ou palavra-passe inválidos');}
+   if(user&&user.active===false)return error(res,403,'Conta desactivada');
+   const role=predefined?.role||'colaborador';const activePanel=email===OWNER_EMAIL?'admin':user?.panels?.[0]||'recepcao';
+   const allowed=await pool.query('SELECT id FROM ipz_access_panels WHERE id=$1',[activePanel]);
+   if(!allowed.rows.length)return error(res,403,'Nenhum painel disponível para esta conta');
    attempts.delete(ip);const token=crypto.randomBytes(32).toString('hex'),hash=crypto.createHash('sha256').update(token).digest('hex');
-   await pool.query('INSERT INTO ipz_sessions(token_hash,email,role,expires_at) VALUES($1,$2,$3,now()+interval \'8 hours\')',[hash,email,acc.role]);
-   return json(res,200,{admin:true,role:acc.role,email},{'Set-Cookie':setCookie(token)});
-  }
+   await pool.query('INSERT INTO ipz_sessions(token_hash,email,role,active_panel,expires_at) VALUES($1,$2,$3,$4,now()+interval \'8 hours\')',[hash,email,role,activePanel]);
+   const s=await sessionInfo({headers:{cookie:'ipz_session='+token}});
+   return json(res,200,publicSessionInfo(s),{'Set-Cookie':setCookie(token)});
+   }
   if(r==='/api/logout'&&m==='POST'){const token=cookies(req);if(token)await pool.query('DELETE FROM ipz_sessions WHERE token_hash=$1',[crypto.createHash('sha256').update(token).digest('hex')]);return json(res,200,{ok:true},{'Set-Cookie':setCookie('',true)});}
   const photoRoute=r.match(/^\/api\/product-image\/([a-zA-Z0-9_-]+)\/([0-3])$/);
   if(photoRoute&&m==='GET'){
@@ -505,41 +547,105 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    return json(res,201,{ok:true,item});
   }
   const s=await session(req);if(!s)return error(res,401,'Inicia sessão para aceder ao painel');
+  // Troca de painel: apenas entre perfis atribuídos ao próprio utilizador.
+  if(r==='/api/admin/switch-panel'&&m==='POST'){
+   const b=await parse(req),id=cut(b.panelId,80);
+   if(!s.panels.some(p=>p.id===id))return error(res,403,'Painel não atribuído a este utilizador');
+   const token=cookies(req),hash=crypto.createHash('sha256').update(token).digest('hex');
+   await pool.query('UPDATE ipz_sessions SET active_panel=$2 WHERE token_hash=$1',[hash,id]);
+   return json(res,200,publicSessionInfo(await session(req)));
+  }
+  if(r==='/api/admin/panels'&&m==='GET'){
+   requireAccess(s,'panels.manage');const users=await pool.query('SELECT email,name,panels,active FROM ipz_staff_users ORDER BY email');
+   return json(res,200,{panels:await allPanels(),users:users.rows});
+  }
+  if(r==='/api/admin/panels'&&m==='POST'){
+   requireAccess(s,'panels.manage');const b=await parse(req),name=cut(b.name,65),permissions=normalizePermissions(b.permissions);
+   if(name.length<3||name.length>65||!permissions.length)bad('Indica nome e permissões válidas');
+   const id='panel_'+crypto.randomBytes(7).toString('hex');
+   await pool.query('INSERT INTO ipz_access_panels(id,name,permissions) VALUES($1,$2,$3::jsonb)',[id,name,JSON.stringify(permissions)]);
+   return json(res,201,{ok:true,id});
+  }
+  const panelRoute=r.match(/^\/api\/admin\/panels\/(panel_[a-f0-9]{14})$/);
+  if(panelRoute){requireAccess(s,'panels.manage');const id=panelRoute[1];
+   if(m==='PATCH'){const b=await parse(req),name=cut(b.name,65),permissions=normalizePermissions(b.permissions);
+    if(name.length<3||!permissions.length)bad('Indica nome e permissões válidas');
+    const q=await pool.query('UPDATE ipz_access_panels SET name=$2,permissions=$3::jsonb WHERE id=$1 AND protected=false RETURNING id',[id,name,JSON.stringify(permissions)]);
+    if(!q.rows.length)return error(res,404,'Painel não encontrado');return json(res,200,{ok:true});}
+   if(m==='DELETE'){await tx(async db=>{await db.query('DELETE FROM ipz_access_panels WHERE id=$1 AND protected=false',[id]);
+    await db.query('UPDATE ipz_staff_users SET panels=array_remove(panels,$1) WHERE $1=ANY(panels)',[id]);
+    await db.query('UPDATE ipz_staff_users SET active=false WHERE cardinality(panels)=0 AND email <> $1',[RECEPTION_EMAIL]);
+    await db.query('DELETE FROM ipz_sessions WHERE active_panel=$1',[id]);});return json(res,200,{ok:true});}
+  }
+  if(r==='/api/admin/staff'&&m==='POST'){
+   requireAccess(s,'panels.manage');const b=await parse(req),email=validateStaffEmail(cut(b.email,200).toLowerCase());
+   if(email===OWNER_EMAIL)bad('A conta do Administrador principal não pode ser alterada',403);
+   const name=cut(b.name,80),pw=String(b.password||''),panels=[...new Set(Array.isArray(b.panels)?b.panels:[])];
+   if(!name||!panels.length||panels.length>15)bad('Nome e painéis obrigatórios');
+   const found=await pool.query('SELECT id FROM ipz_access_panels WHERE id=ANY($1::text[])',[panels]);
+   if(found.rows.length!==panels.length)bad('Painel inválido');
+   if(email===RECEPTION_EMAIL){
+    await pool.query('UPDATE ipz_staff_users SET name=$2,panels=$3,active=true WHERE email=$1',[email,name,panels]);
+   }else{
+    if(pw.length<12||pw.length>160)bad('A palavra-passe deve ter entre 12 e 160 caracteres');
+    await pool.query('INSERT INTO ipz_staff_users(email,name,password_hash,panels) VALUES($1,$2,$3,$4)',[email,name,hashPassword(pw),panels]);
+   }
+   return json(res,201,{ok:true});
+  }
+  const staffRoute=r.match(/^\/api\/admin\/staff\/([^/]+)$/);
+  if(staffRoute){requireAccess(s,'panels.manage');const email=validateStaffEmail(decodeURIComponent(staffRoute[1]).toLowerCase());
+   if(email===OWNER_EMAIL)bad('A conta do Administrador principal está protegida',403);
+   if(m==='PATCH'){
+    const b=await parse(req),panels=[...new Set(Array.isArray(b.panels)?b.panels:[])],name=cut(b.name,80);
+    if(!name||!panels.length||panels.length>15)bad('Atribui pelo menos um painel');
+    const found=await pool.query('SELECT id FROM ipz_access_panels WHERE id=ANY($1::text[])',[panels]);if(found.rows.length!==panels.length)bad('Painel inválido');
+    if(email===RECEPTION_EMAIL&&(!panels.length||b.active===false))bad('Não podes desactivar a conta base da Recepção');
+    const pw=String(b.password||'');if(pw&&(pw.length<12||pw.length>160))bad('Palavra-passe demasiado curta');
+    const q=await pool.query('UPDATE ipz_staff_users SET name=$2,panels=$3,active=$4,password_hash=CASE WHEN $5::text IS NULL THEN password_hash ELSE $5 END WHERE email=$1 RETURNING email',[email,name,panels,b.active!==false,pw?hashPassword(pw):null]);
+    if(!q.rows.length)return error(res,404,'Utilizador não encontrado');
+    await pool.query('DELETE FROM ipz_sessions WHERE email=$1',[email]);return json(res,200,{ok:true});
+   }
+   if(m==='DELETE'){
+    if(email===RECEPTION_EMAIL)bad('A conta base da Recepção não pode ser apagada',403);
+    await tx(async db=>{await db.query('DELETE FROM ipz_sessions WHERE email=$1',[email]);await db.query('DELETE FROM ipz_staff_users WHERE email=$1',[email]);});return json(res,200,{ok:true});
+   }
+  }
+
 
   // Agenda operacional: todas as rotas exigem sessão, alterações respeitam permissões.
-  if(r==='/api/admin/calendar'&&m==='GET'){
+  if(r==='/api/admin/calendar'&&m==='GET'){requireAccess(s,'calendar.view');
    const from=u.searchParams.get('from')||'',to=u.searchParams.get('to')||'';
    if(!validDay(from)||!validDay(to)||to<from||(Date.parse(to+'T00:00:00Z')-Date.parse(from+'T00:00:00Z'))/86400000>42)return error(res,400,'Intervalo inválido (máximo 43 dias)');
    return json(res,200,await calendarData(from,to));
   }
   if(r==='/api/admin/calendar/blocks'&&m==='POST'){
-   if(s.role!=='admin')return error(res,403,'Apenas o Admin pode bloquear horários');
+   requireAccess(s,'calendar.blocks');
    const id=await createCourtBlock(await parse(req),s);return json(res,201,{ok:true,id});
   }
   const removeBlock=r.match(/^\/api\/admin\/calendar\/blocks\/(BLQ-[A-Za-z0-9]+)$/);
   if(removeBlock&&m==='DELETE'){
-   if(s.role!=='admin')return error(res,403,'Apenas o Admin pode remover bloqueios');
+   requireAccess(s,'calendar.blocks');
    await deleteCourtBlock(removeBlock[1],s);return json(res,200,{ok:true});
   }
   const moveBooking=r.match(/^\/api\/admin\/calendar\/bookings\/(RES-[A-Za-z0-9]+)\/reschedule$/);
-  if(moveBooking&&m==='PATCH')return json(res,200,{ok:true,booking:await rescheduleBooking(moveBooking[1],await parse(req),s)});
+  if(moveBooking&&m==='PATCH'){if(!hasAccess(s,'bookings.edit')&&!hasAccess(s,'calendar.edit'))bad('Sem permissão para reagendar',403);return json(res,200,{ok:true,booking:await rescheduleBooking(moveBooking[1],await parse(req),s)});}
   if(r==='/api/admin/gallery'&&m==='POST'){
-    if(s.role!=='admin')return error(res,403,'Apenas Admin');const b=await parse(req,400000),id=ref('GAL');
+    requireAccess(s,'gallery.edit');const b=await parse(req,400000),id=ref('GAL');
     const caption=cut(b.caption,160);if(!caption)bad('Indica uma legenda');
     await pool.query('INSERT INTO ipz_gallery(id,caption,image) VALUES($1,$2,$3)',[id,caption,galleryImage(b.image)]);return json(res,201,{ok:true,id});
   }
   if(r.startsWith('/api/admin/gallery/')&&m==='DELETE'){
-    if(s.role!=='admin')return error(res,403,'Apenas Admin');const id=r.split('/').pop();await pool.query('DELETE FROM ipz_gallery WHERE id=$1',[id]);return json(res,200,{ok:true});
+    requireAccess(s,'gallery.edit');const id=r.split('/').pop();await pool.query('DELETE FROM ipz_gallery WHERE id=$1',[id]);return json(res,200,{ok:true});
   }
-  if(r==='/api/admin/tournaments'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin');return json(res,200,{items:await tournamentList(true)});}
+  if(r==='/api/admin/tournaments'&&m==='GET'){requireAccess(s,'tournaments.view');return json(res,200,{items:await tournamentList(true)});}
   const adminPhoto=r.match(/^\/api\/admin\/tournaments\/photo\/([A-Za-z0-9_-]+)$/);
   if(adminPhoto&&m==='GET'){
-   if(s.role!=='admin')return error(res,403,'Apenas Admin');const q=await pool.query('SELECT image FROM ipz_tournament_photos WHERE id=$1',[adminPhoto[1]]),uri=q.rows[0]?.image;if(!uri)return error(res,404,'Imagem não encontrada');
+   requireAccess(s,'tournaments.view');const q=await pool.query('SELECT image FROM ipz_tournament_photos WHERE id=$1',[adminPhoto[1]]),uri=q.rows[0]?.image;if(!uri)return error(res,404,'Imagem não encontrada');
    const type=uri.slice(5,uri.indexOf(';')),bytes=Buffer.from(uri.split(',')[1],'base64');res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff'});return res.end(bytes);
   }
   const rankingRoute=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/ranking$/);
   if(rankingRoute&&m==='PUT'){
-   if(s.role!=='admin')return error(res,403,'Apenas Admin');const id=rankingRoute[1],b=await parse(req);
+   requireAccess(s,'tournaments.edit');const id=rankingRoute[1],b=await parse(req);
    const q=await pool.query('SELECT data FROM ipz_tournaments WHERE id=$1',[id]);if(!q.rows.length)return error(res,404,'Torneio inexistente');
    const ranking=cleanRanking(b.ranking,q.rows[0].data.participants);
    await pool.query("UPDATE ipz_tournaments SET data=jsonb_set(data,'{ranking}',$2::jsonb) WHERE id=$1",[id,JSON.stringify(ranking)]);
@@ -547,11 +653,11 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   }
   const photosRoute=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/photos$/);
   if(photosRoute&&m==='GET'){
-   if(s.role!=='admin')return error(res,403,'Apenas Admin');const q=await pool.query('SELECT id,caption FROM ipz_tournament_photos WHERE tournament_id=$1 ORDER BY created_at DESC',[photosRoute[1]]);
+   requireAccess(s,'tournaments.view');const q=await pool.query('SELECT id,caption FROM ipz_tournament_photos WHERE tournament_id=$1 ORDER BY created_at DESC',[photosRoute[1]]);
    return json(res,200,{items:q.rows.map(x=>({...x,url:'/api/admin/tournaments/photo/'+x.id}))});
   }
   if(photosRoute&&m==='POST'){
-   if(s.role!=='admin')return error(res,403,'Apenas Admin');const b=await parse(req,400000),id=ref('TFOTO');
+   requireAccess(s,'tournaments.edit');const b=await parse(req,400000),id=ref('TFOTO');
    const q=await pool.query('SELECT id FROM ipz_tournaments WHERE id=$1',[photosRoute[1]]);if(!q.rows.length)return error(res,404,'Torneio inexistente');
    const caption=cut(b.caption,160)||'Fotografia do torneio';
    const n=await pool.query('SELECT count(*)::int AS n FROM ipz_tournament_photos WHERE tournament_id=$1',[photosRoute[1]]);
@@ -561,16 +667,16 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   }
   const deletePhoto=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/photos\/([A-Za-z0-9_-]+)$/);
   if(deletePhoto&&m==='DELETE'){
-   if(s.role!=='admin')return error(res,403,'Apenas Admin');await pool.query('DELETE FROM ipz_tournament_photos WHERE tournament_id=$1 AND id=$2',[deletePhoto[1],deletePhoto[2]]);
+   requireAccess(s,'tournaments.edit');await pool.query('DELETE FROM ipz_tournament_photos WHERE tournament_id=$1 AND id=$2',[deletePhoto[1],deletePhoto[2]]);
    return json(res,200,{ok:true});
   }
 
   if(r==='/api/admin/tournaments'&&m==='POST'){
-    if(s.role!=='admin')return error(res,403,'Apenas Admin');const v=tournamentBody(await parse(req),true),id=ref('TOR');
+    requireAccess(s,'tournaments.edit');const v=tournamentBody(await parse(req),true),id=ref('TOR');
     await pool.query('INSERT INTO ipz_tournaments(id,data) VALUES($1,$2::jsonb)',[id,JSON.stringify({...v,organizer:v.name,status:'Publicado',draw:[],createdAt:new Date().toISOString()})]);return json(res,201,{ok:true,id});
   }
   if(r.startsWith('/api/admin/tournaments/')&&m==='PATCH'){
-    if(s.role!=='admin')return error(res,403,'Apenas Admin');const id=r.split('/').pop(),b=await parse(req);
+    requireAccess(s,'tournaments.edit');const id=r.split('/').pop(),b=await parse(req);
     const row=await pool.query('SELECT data FROM ipz_tournaments WHERE id=$1',[id]);if(!row.rows.length)return error(res,404,'Torneio não encontrado');
     let data=row.rows[0].data;
     if(b.action==='publish')data={...data,status:'Publicado'};
@@ -587,26 +693,26 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
     await pool.query('UPDATE ipz_tournaments SET data=$2::jsonb WHERE id=$1',[id,JSON.stringify(data)]);return json(res,200,{ok:true});
   }
   if(r.startsWith('/api/admin/tournaments/')&&m==='DELETE'){
-     if(s.role!=='admin')return error(res,403,'Apenas Admin');await pool.query('DELETE FROM ipz_tournaments WHERE id=$1',[r.split('/').pop()]);return json(res,200,{ok:true});
+     requireAccess(s,'tournaments.edit');await pool.query('DELETE FROM ipz_tournaments WHERE id=$1',[r.split('/').pop()]);return json(res,200,{ok:true});
   }
-  if(r==='/api/admin/audit'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin');const q=await pool.query('SELECT happened_at,actor_email,actor_role,entity_type,entity_ref,previous_status,new_status FROM ipz_audit_log ORDER BY happened_at DESC LIMIT 300');return json(res,200,{items:q.rows});}
-  if(r==='/api/admin/export-45-days'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode exportar o relatório');return excel45Days(res);}
-  if(r==='/api/admin/reports/months'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin');return json(res,200,{months:reportMonths(),timezone:MONTH_ZONE,retentionMonths:3});}
-  if(r==='/api/admin/reports/export'&&m==='GET'){if(s.role!=='admin')return error(res,403,'Apenas Admin');return excelMonth(res,u.searchParams.get('month'));}
+  if(r==='/api/admin/audit'&&m==='GET'){requireAccess(s,'panels.manage');const q=await pool.query('SELECT happened_at,actor_email,actor_role,entity_type,entity_ref,previous_status,new_status FROM ipz_audit_log ORDER BY happened_at DESC LIMIT 300');return json(res,200,{items:q.rows});}
+  if(r==='/api/admin/export-45-days'&&m==='GET'){requireAccess(s,'reports.view');return excel45Days(res);}
+  if(r==='/api/admin/reports/months'&&m==='GET'){requireAccess(s,'reports.view');return json(res,200,{months:reportMonths(),timezone:MONTH_ZONE,retentionMonths:3});}
+  if(r==='/api/admin/reports/export'&&m==='GET'){requireAccess(s,'reports.view');return excelMonth(res,u.searchParams.get('month'));}
   const sm=r.match(/^\/api\/snapshot\/(orders|bookings|messages|products)$/);
-  if(sm&&m==='GET')return json(res,200,{docs:await snapshot(sm[1])});
+  if(sm&&m==='GET'){requireAccess(s,sm[1]+'.view');return json(res,200,{docs:await snapshot(sm[1])});}
   const itemRoute=r.match(/^\/api\/item\/(orders|bookings|messages)\/([A-Za-z0-9_-]+)$/);
   if(itemRoute&&m==='PATCH'){
    const [,c,id]=itemRoute,patch=await parse(req);
    if(!/^\w+-[A-Za-z0-9]+$/.test(id))return error(res,400,'Referência inválida');
-   await modifyRecord(c,{list:[{ref:id,...patch}]},s);return json(res,200,{ok:true});
+   requireAccess(s,c+'.edit');await modifyRecord(c,{list:[{ref:id,...patch}]},s);return json(res,200,{ok:true});
   }
   const doc=r.match(/^\/api\/doc\/(orders|bookings|messages|products)\/([a-zA-Z0-9_-]+)$/);
   if(doc){const [,c,id]=doc;
-   if(m==='GET'){if(c==='products'&&s.role!=='admin')return error(res,403,'Acesso restrito');let data=await getDoc(c,id);return json(res,200,{exists:!!data,data});}
+   if(m==='GET'){requireAccess(s,c+'.view');let data=await getDoc(c,id);return json(res,200,{exists:!!data,data});}
    if(m==='PUT'){
-    if(c==='products'){if(s.role!=='admin')return error(res,403,'Apenas Admin pode editar produtos');await saveProduct(id,await parse(req,1100000));}
-    else {if(id!=='local')return error(res,400,'Identificador inválido');await modifyRecord(c,await parse(req),s);}
+    if(c==='products'){requireAccess(s,'products.edit');await saveProduct(id,await parse(req,1100000));}
+    else {requireAccess(s,c+'.edit');if(id!=='local')return error(res,400,'Identificador inválido');await modifyRecord(c,await parse(req),s);}
     return json(res,200,{ok:true});
    }
   }
@@ -614,7 +720,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  }
  if(m!=='GET'&&m!=='HEAD')return error(res,405,'Método não permitido');
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
- if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-calendar.js','admin-calendar.css','admin-status.css','monthly-reports.css','whatsapp-shop.css','booking-whatsapp.css','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
+ if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-calendar.js','admin-calendar.css','admin-panels.js','admin-panels.css','admin-status.css','monthly-reports.css','whatsapp-shop.css','booking-whatsapp.css','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
   res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY','Cache-Control':/\.(?:html|js|css)$/.test(file)?'no-cache, must-revalidate':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
