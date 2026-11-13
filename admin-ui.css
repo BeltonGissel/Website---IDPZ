@@ -268,3 +268,79 @@ body.adm {
 
 /* V31: defesa contra o bloco informativo obsoleto carregado de uma sessão anterior. */
 .adm .ad-sb > .ad-card { display: none !important; }
+
+
+/* V33 | Identidade cromática unificada do Admin
+   ÚNICA cor de destaque: #CFF902, a mesma de Terminar sessão.
+   Escopo exclusivo do painel, sem afectar a loja pública. */
+body.adm #adm {
+  --ipz-admin-accent: #CFF902;
+  --ipz-admin-accent-hover: #BCE600;
+  --ipz-admin-accent-ink: #142015;
+  --ipz-admin-soft: #F4F8E5;
+  --ipz-admin-ink: #12212B;
+}
+/* Cartões de indicadores antes com gradientes verde escuro */
+body.adm .ad-wrap .kp.k1,
+body.adm .ad-wrap .kp.k2,
+body.adm .ad-wrap .k1,
+body.adm .ad-wrap .k2 {
+  background: var(--ipz-admin-accent) !important;
+  background-image: none !important;
+  color: var(--ipz-admin-accent-ink) !important;
+}
+body.adm .ad-wrap .kp.k1 :is(.kt,.kn,small,.gr,.ka),
+body.adm .ad-wrap .kp.k2 :is(.kt,.kn,small,.gr,.ka) {
+  color: var(--ipz-admin-accent-ink) !important;
+}
+body.adm .ad-wrap .kp.k1 .ka,
+body.adm .ad-wrap .kp.k2 .ka {
+  border-color: rgba(20,32,21,.72) !important;
+  background: rgba(255,255,255,.28) !important;
+}
+body.adm .ad-wrap .kp.k1 .ka:hover,
+body.adm .ad-wrap .kp.k2 .ka:hover {background: rgba(255,255,255,.6) !important;}
+/* Botões de acção e saída têm a mesma linguagem visual */
+body.adm .ad-wrap .btn:not(.bo):not(:disabled),
+body.adm .ad-wrap .ad-sb .ad-logout,
+body.adm .ipz-report-download,
+body.adm #ipz-community-admin button:not(.danger):not(:disabled):not(.ipz-com-tab) {
+  background: var(--ipz-admin-accent) !important;
+  background-image: none !important;
+  border-color: var(--ipz-admin-accent) !important;
+  color: var(--ipz-admin-accent-ink) !important;
+}
+body.adm .ad-wrap .btn:not(.bo):not(:disabled):hover,
+body.adm .ad-wrap .ad-sb .ad-logout:hover,
+body.adm .ipz-report-download:hover,
+body.adm #ipz-community-admin button:not(.danger):not(:disabled):not(.ipz-com-tab):hover {
+  background: var(--ipz-admin-accent-hover) !important;
+  border-color: var(--ipz-admin-accent-hover) !important;
+}
+/* Barra de navegação e ícones */
+body.adm .ad-wrap .ad-sb .nl.on {
+  background: var(--ipz-admin-soft) !important;
+  color: var(--ipz-admin-accent-ink) !important;
+}
+body.adm .ad-wrap .ad-sb .nl.on::before {background: var(--ipz-admin-accent) !important;}
+body.adm .ad-wrap .ad-sb .nl.on i,
+body.adm .ad-wrap .ad-sb .nl.on i svg {color: var(--ipz-admin-accent-ink) !important;}
+body.adm .ad-wrap .ad-sb .nl:hover {background: var(--ipz-admin-soft) !important;}
+body.adm .ad-wrap .ad-pf i,
+body.adm .ipz-login-mark {background: var(--ipz-admin-accent) !important;color:var(--ipz-admin-accent-ink) !important;}
+/* Gráficos e realces de informação */
+body.adm .ad-wrap .bb.hi,
+body.adm .ad-wrap .bb.md {background:var(--ipz-admin-accent) !important;color:var(--ipz-admin-accent-ink) !important;}
+body.adm .ad-wrap .bb.hz {background:repeating-linear-gradient(135deg,#e5eaed 0 4px,#f5f7f8 4px 8px) !important;}
+body.adm .ad-wrap .kp .gr,
+body.adm #ipz-community-admin [role="status"],
+body.adm .ipz-report-card small,
+body.adm #ipz-community-admin details > summary {color:#425208 !important;}
+body.adm .ipz-report-info {background:#F7FBEA !important;border-color:#DDEAB5 !important;color:#26311C !important;}
+/* Acessibilidade e preservação das cores de erro */
+body.adm button:focus-visible,body.adm a:focus-visible {outline:3px solid var(--ipz-admin-accent) !important;outline-offset:3px;}
+body.adm button.danger,body.adm .cp2.r {background:#fff0f0 !important;color:#a32432 !important;border-color:#e6bec1 !important;}
+@media(prefers-color-scheme: dark){body.adm .ad-wrap .kp.k1,body.adm .ad-wrap .kp.k2 {color:#142015 !important;}}
+/* Etiquetas de sucesso e barras: o único verde é o institucional. */
+body.adm .cp2.g {background:#CFF902 !important;color:#142015 !important;}
+body.adm .ad-wrap .bb.hi,body.adm .ad-wrap .bb.md {color:#142015 !important;}
