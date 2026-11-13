@@ -10,6 +10,7 @@
    'admin-torneios':'<path d="M8 4h8v8a4 4 0 0 1-8 0V4ZM8 6H4v3a4 4 0 0 0 4 4M16 6h4v3a4 4 0 0 1-4 4M12 16v4m-4 1h8"/>',
    'admin-pagamentos':'<rect x="2" y="5" width="20" height="14" rx="3"/><path d="M2 10h20m-15 5h4"/>',
    'admin-mensagens':'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="m4 7 8 6 8-6"/>',
+   'admin-relatorios':'<path d="M4 20V5a2 2 0 0 1 2-2h9l5 5v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M14 3v6h6M8 16h2m2-4v4m2-2v2m2-5v5"/>',
    'home':'<path d="m3 10 9-7 9 7v10H3V10Zm6 10v-7h6v7"/>',
    'loja':'<path d="M4 9h16l-1 12H5L4 9ZM9 10V7a3 3 0 0 1 6 0v3"/>',
    'logout':'<path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M14 16l4-4-4-4m4 4H9"/>',
