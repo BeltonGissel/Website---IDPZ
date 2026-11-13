@@ -20,3 +20,9 @@ assert(server.includes('ipz_audit_log'),'Falta a tabela de auditoria');
 assert(server.includes('ipz_bookings_request_id'),'Falta idempotência das reservas');
 assert(html.includes('wa.me')||fs.readFileSync('script.js','utf8').includes('wa.me'),'Falta fluxo do WhatsApp');
 console.log(`OK: ${count} ficheiros JS válidos, ${links.length} referências HTML verificadas, recursos públicos e verificações básicas da API.`);
+
+assert(server.includes("/api/admin/reports/export"),'Falta exportação mensal');
+assert(server.includes("allowedReportMonth"),'Falta limite de retenção de relatórios');
+const client=fs.readFileSync('script.js','utf8');
+assert(client.includes('admin-relatorios'),'Falta navegação Relatórios');
+assert(client.includes('ipzCreatedThisMonth'),'Falta reinício visual mensal');
