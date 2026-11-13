@@ -100,7 +100,7 @@ async function refreshBookingAvailability(){
  }
 }
 bk();
-var K=["Raquetes","Sapatilhas","Roupa","Sacos","Packs","Bolas","Acessórios","Outlet","Pickleball","Outras raquetes"],SZ={1:["38","39","40","41","42","43"],2:["S","M","L","XL"]},BR="Marca exemplo";
+var K=["Raquetes","Sapatilhas","Roupa","Sacos","Packs","Bolas","Acessórios","Outlet","Pickleball","Outras raquetes"],SZ={1:["38","39","40","41","42","43"],2:["S","M","L","XL"]};
 var CT=["racket","shoe","shirt","bag","bag","ball","grip","racket","racket","racket"];
 var DS=["Raquetes para todos os níveis de jogo. Confirma as especificações de cada modelo com a nossa equipa.","Sapatilhas de padel para conforto e estabilidade. Consulta os tamanhos e características disponíveis.","Roupa desportiva para treino e competição. Tamanhos e materiais disponíveis sob consulta.","Sacos e mochilas para transportar as tuas raquetes e acessórios.","Packs com artigos de padel reunidos para facilitar a escolha.","Bolas para jogos e treinos. Confirma a disponibilidade e as características do produto.","Acessórios para complementar o teu equipamento de padel.","Ofertas Outlet com disponibilidade e stock limitados.","Equipamento e acessórios para Pickleball.","Outros modelos de raquetes e equipamentos relacionados."];
 var PR=[
@@ -128,7 +128,7 @@ if(p.t==="bag")g='<path d="M78 62Q78 32 100 32Q122 32 122 62" stroke="#101E29" s
 if(p.t==="grip")g='<rect x="46" y="64" width="108" height="30" rx="15" fill="'+c+'"/><rect x="46" y="104" width="108" height="30" rx="15" fill="#CFF902"/><rect x="46" y="144" width="108" height="30" rx="15" fill="'+c+'" opacity=".7"/>';
 var bg=["#e9f1f8","#dfe9f2","#eef3df","#101E29"][v],tr=["","translate(100 100) scale(1.9) translate(-100 -92)","rotate(-18 100 100)","translate(100 100) scale(.85) translate(-100 -100)"][v];
 return '<svg viewBox="0 0 200 200" role="img" aria-label="'+p.n+' (imagem ilustrativa)"><rect width="200" height="200" fill="'+bg+'"/><g transform="'+tr+'">'+g+'</g></svg>'}
-function card(p){var o=p.s<=0;return '<div class="pc"><a href="#produto-'+p.id+'" aria-label="'+p.n+'">'+art(p,0)+'</a><div class="pb"><small>'+K[p.c]+" · "+BR+'</small><h3><a href="#produto-'+p.id+'">'+p.n+'</a></h3><div class="pp">'+money(p.p)+'</div><small class="'+(o?"out":"ok")+'">'+stk(p)+'</small>'+(o?"":SZ[p.c]?'<a class="btn" href="#produto-'+p.id+'">Escolher tamanho</a>':'<button class="btn" data-add="'+p.id+'">Adicionar ao carrinho</button>')+'</div></div>'}
+function card(p){var o=p.s<=0;return '<div class="pc"><a href="#produto-'+p.id+'" aria-label="'+p.n+'">'+art(p,0)+'</a><div class="pb"><small>'+K[p.c]+'</small><h3><a href="#produto-'+p.id+'">'+p.n+'</a></h3><div class="pp">'+money(p.p)+'</div><small class="'+(o?"out":"ok")+'">'+stk(p)+'</small>'+(o?"":SZ[p.c]?'<a class="btn" href="#produto-'+p.id+'">Escolher tamanho</a>':'<button class="btn" data-add="'+p.id+'">Adicionar ao carrinho</button>')+'</div></div>'}
 var F={c:-1,q:"",o:"f"},cart=[],ps={},ord=null;
 try{cart=JSON.parse(localStorage.getItem("ipz-cart")||"[]").filter(function(l){return gp(l.id)})}catch(e){cart=[]}
 function cc(){var n=0;cart.forEach(function(l){n+=l.q});$("#fc").textContent=n;try{localStorage.setItem("ipz-cart",JSON.stringify(cart))}catch(e){}}
@@ -147,7 +147,7 @@ if(ln)ln.q+=q;else cart.push({id:id,sz:sz,q:q});cc();toast("Adicionado ao carrin
 function prod(id){var p=gp(id);if(!p){$("#pv").innerHTML='<p>Produto não encontrado.</p><a class="btn" href="#loja">Voltar à loja</a>';return}ps={id:id,sz:null,q:1,v:0};drawP()}
 function drawP(){var p=gp(ps.id),o=p.s<=0,rel=PR.filter(function(x){return x.c===p.c&&x.id!==p.id}).concat(PR.filter(function(x){return x.c!==p.c})).slice(0,3);
 var h='<a href="#loja" class="lk" style="margin:0">← Voltar à loja</a><div class="pv" style="margin-top:14px"><div><div class="zm" id="zm">'+art(p,ps.v)+'</div><div class="ths">'+[0,1,2,3].map(function(i){return '<button data-th="'+i+'" aria-pressed="'+(i===ps.v)+'" aria-label="Foto '+(i+1)+'">'+art(p,i)+"</button>"}).join("")+'</div></div><div>';
-h+='<small style="color:var(--mut)">'+K[p.c]+" · "+BR+'</small><h2 style="text-transform:none;margin:6px 0 10px">'+p.n+'</h2><div class="pp" style="font-size:1.5rem">'+money(p.p)+'</div><small class="'+(o?"out":"ok")+'">'+stk(p)+'</small>';
+h+='<small style="color:var(--mut)">'+K[p.c]+'</small><h2 style="text-transform:none;margin:6px 0 10px">'+p.n+'</h2><div class="pp" style="font-size:1.5rem">'+money(p.p)+'</div><small class="'+(o?"out":"ok")+'">'+stk(p)+'</small>';
 if(SZ[p.c])h+='<label>Tamanho</label><div>'+SZ[p.c].map(function(z){return '<button class="ch" data-sz="'+z+'" aria-pressed="'+(ps.sz===z)+'">'+z+"</button>"}).join("")+"</div>";
 h+='<label>Quantidade</label><div class="qt"><button data-q="-1" aria-label="Diminuir quantidade" title="Diminuir quantidade"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></button><span>'+ps.q+'</span><button data-q="1" aria-label="Aumentar quantidade" title="Aumentar quantidade"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" fill="none"/></svg></button></div><div class="er" id="pm" style="margin-top:8px"></div>';
 h+=o?'<p class="out">Produto esgotado.</p>':'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="btn" data-addp="1" style="padding:13px 20px">Adicionar ao carrinho</button><button class="btn bo" data-buy="1" style="padding:13px 20px">Adicionar e ver carrinho</button></div>';
@@ -217,23 +217,6 @@ function applyStock(){if(REMOTE||busy||!IS_ADM)return;var o=ORD.filter(function(
 o.items.forEach(function(it){ch=ch.then(function(){return stockSet(it.id,function(c){return c-it.q})})});
 ch.then(function(){return updItem("orders",o._u,o.ref,{ap:true})}).then(function(){busy=false;applyStock()},function(){busy=false})}
 function subAdm(){["orders","bookings","messages"].forEach(function(c){DB.collection(c).onSnapshot(function(snap){var a=flat(snap);if(c==="orders"){ORD=a;applyStock()}else if(c==="bookings")BKG=a;else MSG=a;admRefresh()},function(){})})}
-// Armazenamento de demonstração. Não é um servidor nem oferece autenticação real.
-function localDB(){
-  var prefix="ipz-demo-v2-", watchers={}, channel=null;
-  try{if("BroadcastChannel" in window){channel=new BroadcastChannel("ipz-admin-sync");channel.onmessage=function(e){if(e.data&&e.data.collection)emit(e.data.collection)}}}catch(e){}
-  function key(c,id){return prefix+c+"-"+id}
-  function get(c,id){try{return JSON.parse(localStorage.getItem(key(c,id))||"null")}catch(e){return null}}
-  function all(c){var docs=[];try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i),pre=prefix+c+"-";if(k&&k.indexOf(pre)===0){var id=k.slice(pre.length),data=get(c,id);if(data)docs.push({id:id,data:function(v){return function(){return v}}(data)})}}}catch(e){}return{docs:docs}}
-  function emit(c){(watchers[c]||[]).forEach(function(fn){try{fn(all(c))}catch(e){console.error(e)}})}
-  window.addEventListener("storage",function(e){if(e.key&&e.key.indexOf(prefix)===0){var col=e.key.slice(prefix.length).split("-")[0];emit(col)}});
-  return {collection:function(c){return{
-    doc:function(id){return{
-      get:function(){var v=get(c,id);return Promise.resolve({exists:v!==null,data:function(){return v}})},
-      set:function(v){try{localStorage.setItem(key(c,id),JSON.stringify(v))}catch(e){return Promise.reject(e)}emit(c);if(channel)channel.postMessage({collection:c});return Promise.resolve()}
-    }},
-    onSnapshot:function(fn){(watchers[c]||(watchers[c]=[])).push(fn);fn(all(c));return function(){watchers[c]=watchers[c].filter(function(f){return f!==fn})}}
-  }}};
-}
 // Cliente da API partilhada. A leitura de dados privados exige sessão admin.
 function request(url,opts){return fetch(url,Object.assign({credentials:'same-origin'},opts||{})).then(async function(r){var j=await r.json();if(!r.ok)throw Error(j.error||'Erro da API');return j})}
 function remoteDB(){return {collection:function(c){return{
@@ -243,7 +226,7 @@ function remoteDB(){return {collection:function(c){return{
  }},
  onSnapshot:function(fn){var active=true,previous='';function poll(){if(!active)return;request('/api/snapshot/'+c).then(function(v){var key=JSON.stringify(v.docs);if(key===previous)return;previous=key;fn({docs:v.docs.map(function(o){return{id:o.id,data:function(){return o.data}}})})}).catch(function(e){console.warn('Sincronização '+c,e.message)})}poll();var timer=setInterval(poll,2500);return function(){active=false;clearInterval(timer)}}
 }}}}
-function beginData(){DB=REMOTE?remoteDB():localDB();UID='local';CW=true;READY=true;
+function beginData(){DB=remoteDB();UID='local';CW=true;READY=true;
  DB.collection('products').onSnapshot(prodSnap);if(IS_ADM)subAdm();admRenderIfNeeded()}
 function admRenderIfNeeded(){if(document.body.classList.contains('adm'))admRender(true)}
 function initData(){request('/api/session').then(function(v){REMOTE=true;IS_ADM=!!v.admin;ROLE=v.role||null;beginData()},function(){REMOTE=true;IS_ADM=false;ROLE=null;beginData();toast('Sem ligação ao servidor. Compras e reservas não podem ser registadas.')})}
@@ -258,7 +241,7 @@ function admRender(sh){var el=$("#adm");if(!READY){el.innerHTML='<div class="ax"
 if(!IS_ADM){el.innerHTML='<div class="ax ipz-login"><div class="ipz-login-mark">◉</div><h2>Área reservada</h2><p>Inicia sessão com as credenciais de Admin ou Recepcionista.</p><form id="admin-login"><label for="admin-email">Email profissional</label><input type="email" id="admin-email" required autocomplete="username" placeholder="nome@idpz.com"><label for="admin-pass">Palavra-passe</label><input type="password" id="admin-pass" required autocomplete="current-password"><div class="er" id="login-error" role="alert"></div><button class="btn" type="submit" style="margin-top:16px">Entrar no painel</button> <a class="btn bo" href="#home">Voltar ao site</a></form></div>';return}
 if(ROLE!=="admin"&&["admin-produtos","admin-galeria","admin-torneios","admin-relatorios"].includes(AH))AH="admin";if(sh||!el.querySelector(".ad-wrap")){var nav=[["admin","Painel"],["admin-pedidos","Compras"],["admin-reservas","Reservas"]].concat(ROLE==="admin"?[["admin-produtos","Produtos"],["admin-galeria","Galeria"],["admin-torneios","Torneios"]]:[]).concat([["admin-mensagens","Mensagens"]]).concat(ROLE==="admin"?[["admin-relatorios","Relatórios"]]:[]),lg=($(".hl")||{}).src||"";
 var nb=MSG.filter(function(m){return!m.rd}).length;
-el.innerHTML='<div class="ad-wrap"><aside class="ad-sb"><a href="#home" aria-label="Ver o site"><img src="'+lg+'" alt="Indoor Padel Zone"></a><div class="ad-mn">MENU</div>'+nav.map(function(n){return '<a class="nl'+(n[0]===AH?" on":"")+'" href="#'+n[0]+'"><i></i>'+n[1]+(n[0]==="admin-mensagens"&&nb?'<b class="nbd">'+nb+"</b>":"")+"</a>"}).join("")+'<div class="ad-mn">GERAL</div><a class="nl" href="#home"><i></i>Ver o site</a><a class="nl" href="#loja"><i></i>Ver a loja</a><div class="ad-sidebar-spacer"></div><button class="nl ad-logout" type="button" data-logout="1"><i></i>Terminar sessão</button></aside><div class="ad-main"><div class="ad-top"><input id="aq" type="search" placeholder="Pesquisar" aria-label="Pesquisar" value="'+E(AQ)+'"><div class="ad-pf"><i>A</i><div><b>'+(ROLE==="admin"?"Administração":"Recepcionista")+'</b><br><small>'+(ROLE==="admin"?"admin@idpz.com":"geral@idpz.com")+'</small></div></div></div><div class="ad-demo"><b>Pedidos via WhatsApp</b> · Nenhuma cobrança é realizada pelo website. '+(REMOTE?'Registos partilhados pelo servidor.':'Pré-visualização local: dados limitados a este navegador.')+'</div><div class="ad-pg" id="adc"></div></div></div>'}
+el.innerHTML='<div class="ad-wrap"><aside class="ad-sb"><a href="#home" aria-label="Ver o site"><img src="'+lg+'" alt="Indoor Padel Zone"></a><div class="ad-mn">MENU</div>'+nav.map(function(n){return '<a class="nl'+(n[0]===AH?" on":"")+'" href="#'+n[0]+'"><i></i>'+n[1]+(n[0]==="admin-mensagens"&&nb?'<b class="nbd">'+nb+"</b>":"")+"</a>"}).join("")+'<div class="ad-mn">GERAL</div><a class="nl" href="#home"><i></i>Ver o site</a><a class="nl" href="#loja"><i></i>Ver a loja</a><div class="ad-sidebar-spacer"></div><button class="nl ad-logout" type="button" data-logout="1"><i></i>Terminar sessão</button></aside><div class="ad-main"><div class="ad-top"><input id="aq" type="search" placeholder="Pesquisar" aria-label="Pesquisar" value="'+E(AQ)+'"><div class="ad-pf"><i>A</i><div><b>'+(ROLE==="admin"?"Administração":"Recepcionista")+'</b><br><small>'+(ROLE==="admin"?"admin@idpz.com":"geral@idpz.com")+'</small></div></div></div><div class="ad-pg" id="adc"></div></div></div>'}
 admContent();
 // Compatibilidade com sessões antigas: a caixa informativa não pertence mais ao painel.
 el.querySelectorAll('.ad-sb .ad-card').forEach(function(card){card.remove()});
