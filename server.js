@@ -561,7 +561,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
  if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-status.css','monthly-reports.css','whatsapp-shop.css','booking-whatsapp.css','campeonato-exemplo-1.webp','campeonato-exemplo-2.webp','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
-  res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY','Cache-Control':file.endsWith('.html')?'no-cache':'public, max-age=600'});
+  res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY','Cache-Control':/\.(?:html|js|css)$/.test(file)?'no-cache, must-revalidate':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
  });
 }
