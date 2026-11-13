@@ -1,19 +1,21 @@
-# Indoor Padel Zone V28 — Fecho mensal e relatórios Excel
+# Indoor Padel Zone — V32, publicação institucional
 
-## Funcionamento
+Esta versão conserva a organização original dos ficheiros na raiz.
 
-- **Painel:** às 00h00 do dia 1, hora de Moçambique, os indicadores de compras, reservas e mensagens passam a mostrar apenas os registos do mês que começa. Nunca apagamos as tabelas Neon, reservas futuras, stock ou histórico por causa de um fecho mensal.
-- **Compras e Reservas:** as listas operacionais continuam disponíveis (incluindo pedidos antigos que precisem de intervenção); os indicadores do dashboard referem-se ao mês corrente.
-- **Relatórios:** menu `Relatórios` imediatamente depois de `Mensagens` para a conta Admin. Permite exportar o mês actual e os **três meses anteriores**. Cada ficheiro tem folhas de Resumo, Compras, Reservas, Mensagens, Produtos, Torneios, Galeria e Evolução diária.
-- **Retenção de três meses:** o endpoint rejeita meses fora da janela permitida (HTTP 410). Os ficheiros são criados *sob pedido* em memória e enviados ao browser, nunca guardados no Render, por isso não existe ficheiro no servidor para apagar. Os dados originais no Neon não são eliminados. Os Excel já descarregados para outro dispositivo não podem ser eliminados remotamente.
-- **Fuso horário:** Africa/Maputo (UTC+02:00), inclusive na selecção do mês.
-- **Segurança:** API de relatórios requer sessão de Admin e valida mês e permissões no servidor.
+## Alterações
+- Retirado o aviso de conteúdo de exemplo no catálogo, substituído por texto da loja e WhatsApp.
+- Contactos públicos limitados ao WhatsApp oficial disponibilizado e à localização genérica Maputo. Não foram inventados email, telefone fixo ou endereço de rua.
+- FAQ reescrita com informação compatível com os fluxos do website.
+- Removido o banner informativo do Admin, os seus estilos e o armazenamento local antigo de demonstração (o projecto exige Neon).
+- Eliminada a inserção automática de campeonatos fictícios. Os campeonatos antigos existentes continuam guardados no Neon, mas não são exibidos na API pública nem no painel; para os apagar definitivamente, usar um procedimento administrativo separado com backup.
+- Os dois ficheiros de fotografia fictícia foram retirados do pacote, mas os registos previamente gravados no Neon não foram apagados.
+- Não foram inventados resultados de torneios, depoimentos, serviços ou fotografias oficiais. O Admin pode carregar fotografias autênticas nos produtos, galeria e torneios.
 
-## Publicação
-1. Substitui `server.js`, `script.js`, `index.html` e `tests.js`, adiciona `monthly-reports.css` e este README na raiz do repositório.
-2. No Render usa build `npm install && npm run check` e start `npm start`.
-3. Testa `#admin-relatorios` com a conta Admin. Testa um mês válido e tenta aceder a um mês com mais de três meses, que deverá ser rejeitado.
-4. Não necessitas de alterar as variáveis do Neon nem apagar dados.
+## GitHub
+Substituir `index.html`, `script.js`, `server.js`, `community.js`, `styles.css`, `tests.js` e adicionar `README-V32.md`. Depois executar `npm run check` e publicar no Render.
 
-## Notas de auditoria
-O Excel reproduz o estado actual dos registos pertencentes ao mês escolhido; se o estado de uma compra antiga for modificado posteriormente, uma exportação nova reflecte o estado actualizado. Para fecho financeiro irrevogável, adicionar posteriormente snapshots mensais imutáveis.
+## Antes de anunciar
+- Confirmar dados de contacto e localização exacta com a empresa.
+- Carregar imagens reais dos produtos no Admin e remover produtos fictícios do catálogo, caso existam.
+- Confirmar datas/horários/preços de campo e conteúdos institucionais antes de divulgar.
+- Executar compra via WhatsApp, reserva e autenticação Admin numa base real. Não foram feitos testes de integração com a instância Neon de produção.
