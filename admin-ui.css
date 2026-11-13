@@ -16,7 +16,6 @@
 .adm .ad-sb .ad-logout i{color:#111e14!important}
 .adm .ad-sb .ad-logout:hover{background:#bce600!important;transform:translateY(-2px)}
 .adm .ad-sb .ad-logout:focus-visible,.adm .ad-sb .nl:focus-visible,.adm .ad-main button:focus-visible{outline:3px solid #aecf00;outline-offset:3px}
-.adm .ad-card{margin-top:12px;border-radius:14px;padding:18px 15px}
 .adm .ad-pg{padding:clamp(16px,2.1vw,30px)}
 .adm .ah{gap:16px;margin-bottom:22px}
 .adm .ah h1{line-height:1.13;font-size:clamp(1.7rem,2.4vw,2.25rem)}
@@ -266,3 +265,6 @@ body.adm {
 @media (prefers-reduced-motion: reduce) {
   .adm #ipz-community-admin button {transition: none !important;transform: none !important;}
 }
+
+/* V31: defesa contra o bloco informativo obsoleto carregado de uma sessão anterior. */
+.adm .ad-sb > .ad-card { display: none !important; }
