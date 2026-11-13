@@ -1,0 +1,13 @@
+/* IDPZ V28 — relatórios mensais; modo claro/escuro automático */
+.ipz-report-info{padding:20px 24px;margin:18px 0 22px;border-radius:18px;background:rgba(207,249,2,.09);border:1px solid rgba(114,155,29,.20);color:var(--ink,#14252a)}
+.ipz-report-info p{margin:8px 0 0;line-height:1.6;color:var(--mut,#62717a)}
+.ipz-report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.ipz-report-card{border-radius:20px;padding:24px;background:var(--card,#fff);border:1px solid rgba(104,129,135,.18);display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:20px;min-height:180px}
+.ipz-report-card h2{font-size:clamp(1.3rem,2.5vw,1.9rem);margin:8px 0 4px;text-transform:capitalize}
+.ipz-report-card small{letter-spacing:.09em;font-weight:700;color:#147453}
+.ipz-report-card p{margin:4px 0;color:var(--mut,#6b7880);font-size:.9rem}
+.ipz-report-download{background:#cff902!important;color:#101e29!important;border-radius:99px!important;min-height:42px!important;padding:10px 22px!important;cursor:pointer!important}
+.ipz-report-download:disabled{opacity:.45;cursor:wait!important}
+.ipz-report-footnote{font-size:.85rem;color:var(--mut,#66757c);margin:22px 0;line-height:1.6}
+@media(max-width:700px){.ipz-report-grid{grid-template-columns:1fr}.ipz-report-card{min-height:145px}}
+@media(prefers-color-scheme:dark){.ipz-report-info{color:#f0f6ef;background:rgba(207,249,2,.07);border-color:rgba(207,249,2,.17)}.ipz-report-card{background:#142124;color:#f4f8f6;border-color:#304145}.ipz-report-info p,.ipz-report-card p,.ipz-report-footnote{color:#acbbbb}.ipz-report-card small{color:#cff902}}
