@@ -37,3 +37,64 @@
 @media(max-width:550px){.adm .ipz-manager-card{padding:16px}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{display:none}}
 
 .adm #ipz-community-admin [hidden],.adm .ipz-manager [hidden]{display:none!important;}
+
+/* V36 - Selector circular de perfis. Layout visual do gestor, sem alterar o website público. */
+.adm .ipz-v36{max-width:none;color:#15252c;--accent:#CFF902;min-width:0}
+.adm .ipz-v36-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;font-size:11px;font-weight:800;letter-spacing:.13em;color:#657781}
+.adm .ipz-v36-back{border:0;background:transparent;padding:10px 4px;font:inherit;letter-spacing:0;cursor:pointer;color:#344b56}
+.adm .ipz-v36-stage{background:linear-gradient(150deg,#192327,#10191d);color:#f5f8f7;border-radius:28px;min-height:460px;padding:clamp(22px,4vw,56px) clamp(18px,4.5vw,68px) 38px;box-shadow:0 18px 60px #10232b10}
+.adm .ipz-v36-heading{text-align:center;max-width:720px;margin:0 auto 38px}
+.adm .ipz-v36-heading h1{font-size:clamp(24px,2.7vw,38px);font-weight:700;line-height:1.15;margin:14px 0 10px;letter-spacing:-.04em;color:#f4f8f7}
+.adm .ipz-v36-heading p{font-size:14px;color:#adbbbe;margin:0}
+.adm .ipz-v36-logo{font-size:18px;font-weight:900;letter-spacing:-.09em;color:white}
+.adm .ipz-v36-logo span{color:var(--accent);font-size:18px;padding-left:3px}
+.adm .ipz-v36-profiles{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;max-width:1020px;margin:0 auto}
+.adm .ipz-v36-tile{position:relative;appearance:none;display:flex;flex-direction:column;align-items:center;justify-content:center;width:160px;min-height:183px;border:1px solid #53606475;background:#2a3439;color:#fff;border-radius:17px;padding:18px 11px;cursor:pointer;font:inherit;transition:transform .18s,background .18s,border-color .18s,box-shadow .18s}
+.adm .ipz-v36-tile:hover,.adm .ipz-v36-tile:focus-visible{transform:translateY(-4px);background:#364248;border-color:var(--accent);outline:none}
+.adm .ipz-v36-tile.is-active{border-color:var(--accent);box-shadow:0 0 0 2px #cff90245;background:#354044}
+.adm .ipz-v36-avatar{width:78px;height:78px;display:grid;place-items:center;flex:none;border-radius:50%;background:var(--avatar,#cff902);color:#142328;border:3px solid #ffffff0f;font-size:26px;font-weight:850;letter-spacing:-.07em;margin-bottom:14px}
+.adm .ipz-v36-tile strong{font-size:14px;line-height:1.3;text-align:center;max-width:100%;overflow-wrap:anywhere}
+.adm .ipz-v36-tile small{color:#b1bdc0;font-size:11px;margin-top:6px}
+.adm .ipz-v36-new-tile{background:transparent;border:1px dashed #9cabad80}
+.adm .ipz-v36-add-avatar{background:#6a777c;color:white;font-size:40px;font-weight:400}
+.adm .ipz-v36-edit-badge{position:absolute;right:8px;top:8px;color:var(--accent);font-size:19px}
+.adm .ipz-v36-details{background:#f9fbfb;color:#12232b;border:1px solid #dbe5e6;border-radius:20px;padding:21px;margin:32px auto 0;max-width:930px}
+.adm .ipz-v36-detail-top{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.adm .ipz-v36-detail-top>div{flex:1;min-width:180px}
+.adm .ipz-v36-details h2{margin:0 0 4px;font-size:20px;color:#12232b}
+.adm .ipz-v36-details p{color:#687980;font-size:12px;margin:0}
+.adm .ipz-v36-pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:17px}
+.adm .ipz-v36-pills span{background:#edf2f2;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:700;color:#425861}
+.adm .ipz-v36-details .ipz-v36-members{margin-top:14px}
+.adm .ipz-v36-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding:23px 4px 8px}
+.adm .ipz-v36-add-profile{border:1px solid #d4dfe0;border-radius:999px;background:white;color:#14232c;display:flex;gap:9px;align-items:center;padding:11px 20px;font:inherit;font-weight:750;font-size:13px;cursor:pointer}
+.adm .ipz-v36-add-profile span{font-size:20px;line-height:12px}
+.adm .ipz-v36-add-profile:hover{border-color:#8ea600;background:#f8ffe6}
+.adm .ipz-v36-toggle-label{display:flex;gap:12px;align-items:center;font-size:13px;font-weight:800;cursor:pointer}
+.adm .ipz-v36-toggle-label input{position:absolute;opacity:0;width:1px;height:1px}
+.adm .ipz-v36-track{width:46px;height:25px;border-radius:999px;background:#aab5b8;position:relative;transition:background .2s}
+.adm .ipz-v36-track:before{content:"";position:absolute;top:4px;left:4px;width:17px;height:17px;border-radius:50%;background:white;transition:transform .2s}
+.adm .ipz-v36-toggle-label input:checked+.ipz-v36-track{background:#CFF902}
+.adm .ipz-v36-toggle-label input:checked+.ipz-v36-track:before{transform:translateX(21px);background:#10232b}
+.adm .ipz-v36-toggle-label input:focus-visible+.ipz-v36-track{outline:3px solid #a7bde5;outline-offset:2px}
+.adm .ipz-v36-staff{background:#fff;border:1px solid #dfe8e9;border-radius:23px;padding:24px;margin-top:22px}
+.adm .ipz-v36-staff-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:19px}
+.adm .ipz-v36-staff-heading h2{font-size:21px;color:#10232b;margin:0 0 5px}
+.adm .ipz-v36-staff-heading p{margin:0;color:#63747d;font-size:12px}
+.adm .ipz-v36-staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.adm .ipz-v36-staff-person{display:flex;gap:11px;align-items:center;padding:15px;border:1px solid #e4ebeb;border-radius:16px;min-width:0}
+.adm .ipz-v36-staff-person>div:nth-child(2){flex:1;min-width:0}
+.adm .ipz-v36-staff-person strong,.adm .ipz-v36-staff-person small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.adm .ipz-v36-staff-person strong{font-size:13px}
+.adm .ipz-v36-staff-person small{font-size:11px;color:#75858d;margin-top:2px}
+.adm .ipz-v36-staff-initial{display:grid;place-items:center;width:39px;height:39px;border-radius:50%;background:#CFF902;font-weight:800;flex:none}
+.adm .ipz-v36-overlay{position:fixed;z-index:9999;inset:0;background:#0a1117a8;display:flex;align-items:center;justify-content:center;padding:20px}
+.adm .ipz-v36-dialog{background:#fff;border:1px solid #d3dfe0;border-radius:24px;padding:25px;width:min(720px,100%);max-height:87vh;overflow-y:auto;box-shadow:0 28px 85px #0004;color:#10232b}
+.adm .ipz-v36-dialog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.adm .ipz-v36-dialog-header h2{font-size:23px;margin:0;color:#10232b}
+.adm .ipz-v36-close{border:0;background:#edf2f2;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:25px;color:#13272b}
+.adm .ipz-v36-hint{color:#62747c;font-size:12px}
+.adm .ipz-v36-dialog-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.adm .ipz-v36-loading{padding:45px 20px;text-align:center}
+@media(max-width:700px){.adm .ipz-v36-stage{padding:25px 15px}.adm .ipz-v36-tile{width:calc(50% - 9px);max-width:165px}.adm .ipz-v36-profiles{gap:12px}.adm .ipz-v36-avatar{width:66px;height:66px}.adm .ipz-v36-footer{padding:18px 0}.adm .ipz-v36-dialog{padding:17px}.adm .ipz-v36-staff{padding:15px}}
+@media(prefers-reduced-motion:reduce){.adm .ipz-v36-tile,.adm .ipz-v36-track,.adm .ipz-v36-track:before{transition:none!important}}
