@@ -47,3 +47,19 @@ for(const token of ['dayGrid','weekGrid','monthGrid','data-cal-reschedule','data
 }
 assert(calendarCSS.includes('#CFF902'),'Cor institucional do calendário incorrecta');
 console.log('OK: testes de estrutura da V34, rotas de calendário, bloqueios, reagendamento e WhatsApp.');
+
+// V35 — Verifica que a gestão de painéis é autorizada no servidor e está ligada ao menu.
+const permissionsClient=fs.readFileSync('admin-panels.js','utf8');
+for(const token of ['ipz_access_panels','ipz_staff_users','hashPassword','verifyPassword','normalizePermissions','requireAccess','/api/admin/switch-panel','/api/admin/staff','/api/admin/panels']){
+ assert(server.includes(token),'Falta segurança/funcionalidade de perfis: '+token);
+}
+for(const token of ['data-profile-toggle','data-panel-switch','admin-gerir-paineis','profileMenu','IPZ_PANELS']){
+ assert(client.includes(token),'Falta menu do utilizador: '+token);
+}
+for(const token of ['ipz-create-panel','ipz-create-staff','data-delete-panel','data-delete-staff','permissionsForm']){
+ assert(permissionsClient.includes(token),'Falta gestão de painéis/utilizadores: '+token);
+}
+assert(html.includes('admin-panels.js?v=35')&&html.includes('admin-panels.css?v=35'),'Os ficheiros V35 não estão ligados ao HTML');
+assert(server.includes("requireAccess(s,c+'.edit')"),'As alterações de estado devem validar permissões no servidor');
+assert(server.includes("requireAccess(s,sm[1]+'.view')"),'Os dados privados devem verificar permissões');
+console.log('OK: verificações V35 de perfis, permissões por módulo, menu e rotas protegidas.');
