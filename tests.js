@@ -59,7 +59,8 @@ for(const token of ['data-profile-toggle','data-panel-switch','admin-gerir-paine
 for(const token of ['ipz-create-panel','ipz-create-staff','data-delete-panel','data-delete-staff','permissionsForm']){
  assert(permissionsClient.includes(token),'Falta gestão de painéis/utilizadores: '+token);
 }
-assert(html.includes('admin-panels.js?v=35')&&html.includes('admin-panels.css?v=35'),'Os ficheiros V35 não estão ligados ao HTML');
+assert(html.includes('admin-panels.js?v=36')&&html.includes('admin-panels.css?v=36'),'Os ficheiros V36 não estão ligados ao HTML');
+for(const token of ['ipz-v36-tile','ipz-v36-avatar','Adicionar Perfil','Editar perfil','ipz-create-panel','ipz-create-staff','data-delete-panel','data-delete-staff','permissionsForm']) assert(permissionsClient.includes(token),'Falta elemento visual ou operação V36: '+token);
 assert(server.includes("requireAccess(s,c+'.edit')"),'As alterações de estado devem validar permissões no servidor');
 assert(server.includes("requireAccess(s,sm[1]+'.view')"),'Os dados privados devem verificar permissões');
 console.log('OK: verificações V35 de perfis, permissões por módulo, menu e rotas protegidas.');
