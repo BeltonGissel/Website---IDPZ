@@ -13,7 +13,7 @@ for(const link of links){
  assert(fs.existsSync(name),`Recurso referenciado mas inexistente: ${name}`);
  assert(server.includes("'"+name+"'"),`Ficheiro não autorizado no servidor: ${name}`);
 }
-for(const asset of ['booking-whatsapp.css','campeonato-exemplo-1.webp','campeonato-exemplo-2.webp']){
+for(const asset of ['booking-whatsapp.css']){
  assert(server.includes("'"+asset+"'"),`Recurso não permitido: ${asset}`);
 }
 assert(server.includes('ipz_audit_log'),'Falta a tabela de auditoria');
@@ -26,3 +26,10 @@ assert(server.includes("allowedReportMonth"),'Falta limite de retenção de rela
 const client=fs.readFileSync('script.js','utf8');
 assert(client.includes('admin-relatorios'),'Falta navegação Relatórios');
 assert(client.includes('ipzCreatedThisMonth'),'Falta reinício visual mensal');
+
+const path = require("node:path");
+// Verificações de publicação: nenhuma demonstração deve ser criada nem aparecer na interface.
+const publicationServer=fs.readFileSync(path.join(__dirname,'server.js'),'utf8');
+const publicationHTML=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
+if(publicationServer.includes('seedDemoTournaments()'))throw Error('O servidor ainda inicializa torneios de demonstração');
+if(/\[por preencher\]|PRODUTOS E PREÇOS DE EXEMPLO|\[Texto editável/.test(publicationHTML))throw Error('Existem textos provisórios no website');
