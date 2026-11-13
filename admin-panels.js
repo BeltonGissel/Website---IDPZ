@@ -1,0 +1,44 @@
+/* Indoor Padel Zone — gestão de painéis e utilizadores. Sem dependências. */
+(function(){'use strict';
+ const $=(q,el=document)=>el.querySelector(q);
+ const rootId='ipz-panel-manager';
+ const groups=[
+  ['Painel geral',[['dashboard.view','Consultar painel e indicadores']]],
+  ['Compras',[['orders.view','Ver compras'],['orders.edit','Alterar estados das compras']]],
+  ['Reservas',[['bookings.view','Ver reservas'],['bookings.edit','Confirmar, cancelar e reagendar']]],
+  ['Calendário',[['calendar.view','Consultar calendário'],['calendar.edit','Editar reservas na agenda'],['calendar.blocks','Criar e remover bloqueios']]],
+  ['Produtos',[['products.view','Ver produtos'],['products.edit','Adicionar e editar produtos']]],
+  ['Galeria',[['gallery.view','Ver galeria no Admin'],['gallery.edit','Adicionar e remover fotografias']]],
+  ['Torneios',[['tournaments.view','Ver torneios no Admin'],['tournaments.edit','Criar, actualizar e apagar torneios']]],
+  ['Mensagens',[['messages.view','Ver mensagens'],['messages.edit','Marcar mensagens como lidas']]],
+  ['Relatórios',[['reports.view','Consultar e descarregar Excel']]]
+ ];
+ let panels=[],users=[],busy=false;
+ const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ async function api(url,options){const res=await fetch(url,{credentials:'same-origin',...options});const body=await res.json();if(!res.ok)throw Error(body.error||'Não foi possível concluir a operação');return body;}
+ const jsonOpts=(method,body)=>({method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+ const boxes=(items,selected,prefix)=>items.map(p=>`<label class="ipz-panel-check"><input type="checkbox" name="${prefix}" value="${escape(p.id)}" ${selected.includes(p.id)?'checked':''}><span>${escape(p.name)}</span></label>`).join('');
+ function permissionsForm(current=[]){return groups.map(([title,items])=>`<fieldset class="ipz-permissions"><legend>${title}</legend>${items.map(([key,label])=>`<label class="ipz-panel-check"><input type="checkbox" name="permission" value="${key}" ${current.includes(key)?'checked':''}>${escape(label)}</label>`).join('')}</fieldset>`).join('');}
+ const getChecked=(form,name)=>[...form.querySelectorAll(`input[name="${name}"]:checked`)].map(el=>el.value);
+ function render(){const root=document.getElementById(rootId);if(!root)return;
+  root.innerHTML=`<div class="ipz-manager"><div class="ipz-manager-head"><h1>Gerir painéis</h1><p>Define as permissões de cada painel e atribui acessos individuais aos colaboradores.</p></div>
+  <div class="ipz-manager-notice">Cada colaborador utiliza a sua própria conta. As permissões também são verificadas no servidor. A conta principal de Administração não pode ser eliminada.</div>
+  <div class="ipz-manager-grid"><section class="ipz-manager-card"><h2>Criar painel</h2><p>Ex.: Gestão de reservas, Loja ou Supervisão.</p><form id="ipz-create-panel"><label class="ipz-manager-field">Nome do painel<input name="name" maxlength="65" placeholder="Ex.: Gestão da Loja" required></label><div class="ipz-permissions-grid">${permissionsForm()}</div><button class="ipz-manager-primary" type="submit">Adicionar painel</button><p role="status"></p></form></section>
+  <section class="ipz-manager-card"><h2>Painéis existentes</h2><div class="ipz-profile-list">${panels.map(p=>`<article class="ipz-profile-card"><div class="ipz-profile-card-top"><div><b>${escape(p.name)}</b><small>${p.protected?'Painel base protegido':'Painel personalizado'} · ${(p.permissions||[]).length} permissões</small></div>${p.protected?'':`<button class="ipz-manager-outline" type="button" data-edit-panel="${escape(p.id)}">Editar</button><button class="ipz-manager-danger" type="button" data-delete-panel="${escape(p.id)}">Apagar</button>`}</div><div id="ipz-edit-${escape(p.id)}" hidden></div></article>`).join('')}</div></section></div>
+  <section class="ipz-manager-card ipz-manager-wide"><h2>Adicionar utilizador</h2><p>Cria uma conta e escolhe a que painéis pode aceder. A palavra-passe deve ter pelo menos 12 caracteres.</p><form id="ipz-create-staff"><div class="ipz-manager-fields"><label class="ipz-manager-field">Nome<input name="name" required maxlength="80" autocomplete="off" placeholder="Nome do colaborador"></label><label class="ipz-manager-field">Email<input name="email" required type="email" autocomplete="off" placeholder="utilizador@idpz.com"></label><label class="ipz-manager-field">Palavra-passe temporária<input name="password" type="password" required minlength="12" autocomplete="new-password"></label></div><h3>Painéis atribuídos</h3><div class="ipz-panel-checks">${boxes(panels,[],'panel')}</div><button class="ipz-manager-primary" type="submit">Criar utilizador</button><p role="status"></p></form></section>
+  <section class="ipz-manager-card ipz-manager-wide"><h2>Utilizadores e acessos</h2><div class="ipz-profile-list">${users.map(u=>`<form class="ipz-staff-card" data-edit-staff="${escape(u.email)}"><div><b>${escape(u.email)}</b>${u.email==='geral@idpz.com'?'<small>Conta base de Recepção</small>':''}</div><label class="ipz-manager-field">Nome<input name="name" maxlength="80" value="${escape(u.name)}" required></label><div class="ipz-panel-checks">${boxes(panels,u.panels||[],'panel')}</div><label class="ipz-panel-check"><input name="active" type="checkbox" ${u.active?'checked':''} ${u.email==='geral@idpz.com'?'disabled':''}> Conta activa</label><label class="ipz-manager-field">Nova palavra-passe (opcional)<input name="password" type="password" minlength="12" autocomplete="new-password" placeholder="Deixa vazio para manter"></label><div class="ipz-manager-actions"><button type="submit" class="ipz-manager-primary">Guardar acessos</button>${u.email==='geral@idpz.com'?'':`<button type="button" class="ipz-manager-danger" data-delete-staff="${escape(u.email)}">Apagar utilizador</button>`}</div><p role="status"></p></form>`).join('')}</div></section></div>`;
+ }
+ async function load(){const root=document.getElementById(rootId);if(!root)return;root.innerHTML='<div class="ipz-manager-card">A carregar painéis e utilizadores…</div>';try{const data=await api('/api/admin/panels');panels=data.panels||[];users=data.users||[];render();}catch(e){root.innerHTML='<div class="ipz-manager-card" role="alert">'+escape(e.message)+'</div>';}}
+ async function run(el,action){if(busy)return;busy=true;const b=el?.querySelector('[type=submit]');if(b)b.disabled=true;try{await action();await load();}catch(e){let feedback=el?.querySelector('[role=status]');if(feedback)feedback.textContent=e.message;else alert(e.message);}finally{busy=false;if(b)b.disabled=false;}}
+ document.addEventListener('submit',e=>{const form=e.target;
+  if(form.id==='ipz-create-panel'){e.preventDefault();run(form,()=>api('/api/admin/panels',jsonOpts('POST',{name:form.elements.name.value,permissions:getChecked(form,'permission')})));}
+  if(form.id==='ipz-create-staff'){e.preventDefault();run(form,()=>api('/api/admin/staff',jsonOpts('POST',{name:form.elements.name.value,email:form.elements.email.value,password:form.elements.password.value,panels:getChecked(form,'panel')})));}
+  if(form.matches('[data-edit-staff]')){e.preventDefault();run(form,()=>api('/api/admin/staff/'+encodeURIComponent(form.dataset.editStaff),jsonOpts('PATCH',{name:form.elements.name.value,panels:getChecked(form,'panel'),active:form.elements.active.disabled?true:form.elements.active.checked,password:form.elements.password.value})));}
+  if(form.matches('[data-panel-edit-form]')){e.preventDefault();run(form,()=>api('/api/admin/panels/'+encodeURIComponent(form.dataset.panelEditForm),jsonOpts('PATCH',{name:form.elements.name.value,permissions:getChecked(form,'permission')})));}
+ });
+ document.addEventListener('click',e=>{const edit=e.target.closest('[data-edit-panel]');if(edit){const p=panels.find(x=>x.id===edit.dataset.editPanel);if(!p)return;const slot=document.getElementById('ipz-edit-'+p.id);if(!slot)return;slot.hidden=!slot.hidden;if(!slot.hidden){slot.innerHTML=`<form data-panel-edit-form="${escape(p.id)}"><label class="ipz-manager-field">Nome<input name="name" required value="${escape(p.name)}"></label><div class="ipz-permissions-grid">${permissionsForm(p.permissions)}</div><button class="ipz-manager-primary" type="submit">Guardar permissões</button><p role="status"></p></form>`;}return;}
+  const del=e.target.closest('[data-delete-panel]');if(del){if(!confirm('Apagar este painel? As atribuições a colaboradores também serão removidas.'))return;run(null,()=>api('/api/admin/panels/'+encodeURIComponent(del.dataset.deletePanel),{method:'DELETE'}));return;}
+  const staff=e.target.closest('[data-delete-staff]');if(staff){if(!confirm('Apagar esta conta de colaborador e terminar as sessões associadas?'))return;run(null,()=>api('/api/admin/staff/'+encodeURIComponent(staff.dataset.deleteStaff),{method:'DELETE'}));}
+ });
+ window.IPZPanelManager={render:load};
+})();

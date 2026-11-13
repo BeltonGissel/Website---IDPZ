@@ -1,0 +1,39 @@
+/* V35: mantém o painel administrativo claro com acento institucional. */
+.adm .ipz-user-wrap {position:relative; z-index:30;}
+.adm .ipz-profile-trigger {display:flex; align-items:center; gap:12px; background:transparent; cursor:pointer; border:1px solid transparent; border-radius:18px; padding:9px 12px; font:inherit; color:#10232b; text-align:left;}
+.adm .ipz-profile-trigger:hover,.adm .ipz-profile-trigger:focus-visible {background:#e9eeee; border-color:#c5d3d4; outline:none;}
+.adm .ipz-profile-trigger>i{width:42px;height:42px;flex:none;border-radius:50%;background:#cff902;display:grid;place-items:center;font-style:normal;font-weight:800;color:#10232b;}
+.adm .ipz-profile-trigger b{font-size:13px;display:block;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis;}
+.adm .ipz-profile-trigger small{font-size:11px;display:block;color:#64717a;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis;}
+.adm .ipz-profile-popover{position:absolute;z-index:90;right:0;top:calc(100% + 10px);min-width:245px;background:#fff;border:1px solid #d8e2e3;border-radius:18px;box-shadow:0 22px 58px #10232b27;padding:10px;}
+.adm .ipz-profile-popover[hidden]{display:none}
+.adm .ipz-profile-label{font-size:11px;text-transform:uppercase;letter-spacing:.055em;padding:10px 12px 5px;color:#667781;font-weight:800;}
+.adm .ipz-profile-item{box-sizing:border-box;display:block;width:100%;border:0;background:none;color:#10232b;text-align:left;border-radius:11px;padding:12px;font:inherit;font-size:13px;text-decoration:none;cursor:pointer;}
+.adm .ipz-profile-item:hover,.adm .ipz-profile-item:focus-visible{background:#f3f8e5;outline:none;}
+.adm .ipz-profile-item.active{background:#cff902;font-weight:800;}
+.adm .ipz-profile-exit{margin-top:8px;border-top:1px solid #edf0f0;color:#7a3434;}
+.adm .ipz-manager{--lime:#cff902;color:#11232c;max-width:1260px;}
+.adm .ipz-manager-head{margin-bottom:24px;}.adm .ipz-manager-head h1{font-size:clamp(28px,3vw,42px);letter-spacing:-.045em;margin:0 0 6px;}.adm .ipz-manager-head p{color:#5e6e76;}
+.adm .ipz-manager-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-bottom:18px;}
+.adm .ipz-manager-card{background:white;border:1px solid #e0e7e8;border-radius:24px;padding:24px;min-width:0;margin-bottom:18px;box-shadow:0 6px 20px #12232b05;}
+.adm .ipz-manager-card h2{font-size:22px;color:#10232b;margin:0 0 8px;}.adm .ipz-manager-card h3{font-size:15px;margin:14px 0 10px;}.adm .ipz-manager-card p{font-size:13px;color:#63747d;}
+.adm .ipz-manager-notice{padding:16px 20px;border:1px solid #d9e7ad;background:#f5f9e8;border-radius:16px;margin-bottom:20px;color:#415134;font-size:13px;}
+.adm .ipz-manager-field{display:flex;flex-direction:column;gap:6px;font-weight:650;color:#334852;font-size:13px;margin:10px 0;}
+.adm .ipz-manager-field input{border:1px solid #d1dfe2;border-radius:12px;background:#fff;color:#12232b;padding:13px;min-width:0;width:100%;box-sizing:border-box;min-height:44px;}
+.adm .ipz-manager-field input:focus-visible{outline:2px solid #cff902;outline-offset:2px;}
+.adm .ipz-manager-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+.adm .ipz-permissions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0;}
+.adm .ipz-permissions{min-width:0;border:1px solid #e2e9e9;border-radius:14px;padding:12px;}.adm .ipz-permissions legend{font-weight:800;font-size:12px;padding:0 6px;}
+.adm .ipz-panel-check{display:flex;align-items:center;gap:9px;font-size:12px;color:#344750;margin:9px 0;cursor:pointer;}.adm .ipz-panel-check input{appearance:auto;accent-color:#b4df00;width:16px;height:16px;flex:none;}
+.adm .ipz-panel-checks{display:flex;flex-wrap:wrap;gap:8px 17px;padding:12px 14px;background:#f6f8f8;border-radius:12px;}
+.adm .ipz-manager-primary,.adm .ipz-manager-outline,.adm .ipz-manager-danger{cursor:pointer;border-radius:999px;padding:12px 17px;min-height:43px;font:inherit;font-size:13px;font-weight:750;}
+.adm .ipz-manager-primary{background:#cff902;color:#10232b;border:1px solid #cff902;}.adm .ipz-manager-primary:hover{background:#bbeb00;}
+.adm .ipz-manager-outline{background:#fff;color:#10232b;border:1px solid #bdcdd0;}.adm .ipz-manager-danger{background:#fff;color:#a03b3b;border:1px solid #f1c6c6;}
+.adm .ipz-profile-card,.adm .ipz-staff-card{border:1px solid #e0e7e8;border-radius:16px;padding:16px;margin:12px 0;background:#fff;min-width:0;}
+.adm .ipz-profile-card-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}.adm .ipz-profile-card-top>div{flex:1;min-width:150px;}.adm .ipz-profile-card b,.adm .ipz-staff-card b{font-size:14px;display:block;overflow-wrap:anywhere;}.adm .ipz-profile-card small,.adm .ipz-staff-card small{font-size:11px;color:#75858d;display:block;}
+.adm .ipz-manager-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
+.adm .ipz-staff-card{background:#fcfdfd;padding:20px;}
+@media(max-width:850px){.adm .ipz-manager-grid,.adm .ipz-manager-fields{grid-template-columns:1fr}.adm .ipz-permissions-grid{grid-template-columns:1fr}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{max-width:105px}}
+@media(max-width:550px){.adm .ipz-manager-card{padding:16px}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{display:none}}
+
+.adm #ipz-community-admin [hidden],.adm .ipz-manager [hidden]{display:none!important;}
