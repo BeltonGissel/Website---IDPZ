@@ -52,3 +52,217 @@
 @media(max-width:640px){.adm .ad-wrap{padding:7px}.adm .ad-pg{padding:16px}.adm .dg{grid-template-columns:1fr}.adm .dg .span2{grid-column:auto}.adm .ah>div:last-child{width:100%}.adm .ah .btn{flex:1}.adm .ad-sb .nl{min-height:43px}}
 @media(prefers-color-scheme:dark){.adm .ad-sb .ad-logout{background:#cff902!important;color:#0c180e!important}}
 @media(prefers-reduced-motion:reduce){.adm .ad-sb .nl,.adm .btn,.adm .ka,.adm .ad-pg.is-entering .kp,.adm .ad-pg.is-entering .ah,.adm .ad-pg.is-entering .ka svg,.adm .ad-pg.is-entering .bb,.adm .ad-sb.is-entering .nl{animation:none!important;transition:none!important;filter:none!important;transform:none!important}}
+
+
+/* V29 — Harmonização das abas do Admin.
+   Escopo estrito: o site público mantém os seus temas claro/escuro.
+   A área administrativa utiliza o tema claro institucional em todos os sistemas. */
+body.adm {
+  --ipz-admin-ink: #12212b;
+  --ipz-admin-muted: #647581;
+  --ipz-admin-border: #dfe7e8;
+  --ipz-admin-field: #ffffff;
+  --ipz-admin-surface: #ffffff;
+  --ipz-admin-subtle: #f6f8f7;
+  --ipz-admin-lime: #cff902;
+  color-scheme: light;
+}
+.adm .ad-pg,
+.adm #ipz-community-admin {
+  color: var(--ipz-admin-ink);
+}
+.adm #ipz-community-admin {
+  width: 100%;
+  min-width: 0;
+}
+.adm #ipz-community-admin > h2,
+.adm #ipz-community-admin > p {
+  color: var(--ipz-admin-ink);
+}
+.adm #ipz-community-admin > h2 {
+  font-size: clamp(1.75rem, 2.6vw, 2.5rem);
+  font-weight: 750;
+  letter-spacing: -.045em;
+  line-height: 1.12;
+  margin: 0 0 10px;
+}
+.adm #ipz-community-admin > p {
+  font-size: .95rem;
+  color: var(--ipz-admin-muted);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+/* Formulários de galeria, criação de torneios e edição de resultados. */
+.adm #ipz-community-admin .ipz-com-form {
+  background: var(--ipz-admin-surface) !important;
+  color: var(--ipz-admin-ink) !important;
+  border: 1px solid var(--ipz-admin-border) !important;
+  border-radius: 21px;
+  padding: clamp(20px, 2.4vw, 30px);
+  box-shadow: 0 8px 30px rgba(20,45,48,.035);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  column-gap: 18px;
+  row-gap: 20px;
+}
+.adm #ipz-community-admin .ipz-com-form label,
+.adm #ipz-community-admin .ipz-admin-label,
+.adm #ipz-community-admin .ipz-tournament-photo-form label {
+  color: var(--ipz-admin-ink) !important;
+  font-weight: 650;
+  font-size: .87rem;
+  line-height: 1.4;
+}
+.adm #ipz-community-admin input:not([type="checkbox"]):not([type="radio"]),
+.adm #ipz-community-admin select,
+.adm #ipz-community-admin textarea {
+  min-width: 0;
+  width: 100%;
+  min-height: 47px;
+  padding: 11px 14px;
+  border: 1px solid #cbd7da !important;
+  border-radius: 12px;
+  background: var(--ipz-admin-field) !important;
+  color: var(--ipz-admin-ink) !important;
+  font: inherit;
+  font-size: .93rem;
+  box-shadow: none;
+  opacity: 1;
+  color-scheme: light;
+}
+.adm #ipz-community-admin textarea {
+  min-height: 114px;
+  resize: vertical;
+  line-height: 1.5;
+}
+.adm #ipz-community-admin input::placeholder,
+.adm #ipz-community-admin textarea::placeholder {
+  color: #829198 !important;
+  opacity: 1;
+}
+.adm #ipz-community-admin input[type="file"] {
+  padding: 9px 10px;
+  font-size: .82rem;
+  min-height: 49px;
+}
+.adm #ipz-community-admin input[type="file"]::file-selector-button {
+  background: #eaf0ed;
+  color: #193c31;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 12px;
+  margin-right: 12px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.adm #ipz-community-admin :is(input,textarea,select,button,summary):focus-visible {
+  outline: 3px solid rgba(139,176,0,.5);
+  outline-offset: 2px;
+}
+/* Botões iguais aos de outras abas, com estados coerentes. */
+.adm #ipz-community-admin :is(.ipz-com-btn,button:not(.danger)) {
+  appearance: none;
+  border: 1px solid transparent;
+  background: var(--ipz-admin-lime);
+  color: #152018;
+  font-family: inherit;
+  font-size: .84rem;
+  line-height: 1.3;
+  font-weight: 750;
+  padding: 11px 19px;
+  border-radius: 999px;
+  min-height: 43px;
+  cursor: pointer;
+  transition: background .18s ease, transform .18s ease;
+}
+.adm #ipz-community-admin :is(.ipz-com-btn,button:not(.danger)):hover {
+  background: #bbe600;
+  transform: translateY(-1px);
+}
+.adm #ipz-community-admin :is(.ipz-com-btn,button):disabled { opacity: .55;cursor: not-allowed;transform: none; }
+.adm #ipz-community-admin button.danger {
+  appearance: none;
+  background: #fff1f1;
+  color: #a82d39;
+  border: 1px solid #f1cacf;
+  border-radius: 999px;
+  padding: 11px 18px;
+  min-height: 43px;
+  font: inherit;
+  font-size: .84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.adm #ipz-community-admin button.danger:hover { background: #ffe0e0; }
+/* Cartões da galeria e lista de torneios, incluindo subformulários. */
+.adm #ipz-community-admin .ipz-com-grid { gap: 16px; }
+.adm #ipz-community-admin .ipz-com-card,
+.adm #ipz-community-admin .ipz-tournament-management {
+  color: var(--ipz-admin-ink);
+  background: var(--ipz-admin-surface) !important;
+  border: 1px solid var(--ipz-admin-border);
+  box-shadow: 0 6px 22px rgba(20,45,48,.035);
+}
+.adm #ipz-community-admin .ipz-com-card { border-radius: 18px; }
+.adm #ipz-community-admin .ipz-com-card .ipz-pad { padding: 18px; }
+.adm #ipz-community-admin .ipz-com-card p,
+.adm #ipz-community-admin .ipz-com-meta { color: var(--ipz-admin-muted);opacity: 1; }
+.adm #ipz-community-admin .ipz-com-card img { background: #eef2f3; }
+.adm #ipz-community-admin .ipz-tournament-management {
+  border-radius: 14px;
+  margin: 15px 0;
+  padding: 15px;
+}
+.adm #ipz-community-admin details > summary { color: #165c48;cursor:pointer;font-weight:700; }
+.adm #ipz-community-admin :is(.ipz-match,.ipz-com-notice) {
+  background: var(--ipz-admin-subtle);
+  color: var(--ipz-admin-ink);
+  border: 1px solid var(--ipz-admin-border);
+  border-radius: 12px;
+}
+.adm #ipz-community-admin [role="status"] { color: #126044;line-height: 1.45; }
+/* Relatórios: nenhum cartão escuro no Admin, independentemente do tema do sistema. */
+.adm .ipz-report-info {
+  background: #f0f7e8 !important;
+  border: 1px solid #d9e9c9 !important;
+  color: #27432a !important;
+  border-radius: 18px;
+}
+.adm .ipz-report-info strong { color: #23402b !important; }
+.adm .ipz-report-info p { color: #536d59 !important;opacity:1; }
+.adm .ipz-report-grid { gap: 15px; }
+.adm .ipz-report-card {
+  background: var(--ipz-admin-surface) !important;
+  color: var(--ipz-admin-ink) !important;
+  border: 1px solid var(--ipz-admin-border) !important;
+  border-radius: 20px;
+  box-shadow: 0 8px 26px rgba(20,45,48,.035);
+  min-width: 0;
+}
+.adm .ipz-report-card small { color: #146b4e !important;letter-spacing: .075em; }
+.adm .ipz-report-card h2 { color: var(--ipz-admin-ink) !important;font-size: clamp(1.35rem, 2vw, 1.75rem); }
+.adm .ipz-report-card p,
+.adm .ipz-report-footnote { color: var(--ipz-admin-muted) !important;opacity:1; }
+.adm .ipz-report-card .ipz-report-download {
+  background: var(--ipz-admin-lime) !important;
+  color: #142015 !important;
+  border: 0 !important;
+  border-radius: 999px;
+  box-shadow: none;
+}
+.adm .ipz-report-card .ipz-report-download:hover { background: #bbe600 !important; }
+@media (max-width: 740px) {
+  .adm #ipz-community-admin .ipz-com-grid {grid-template-columns: repeat(2, minmax(0,1fr));}
+  .adm #ipz-community-admin .ipz-com-form {grid-template-columns:1fr;}
+  .adm #ipz-community-admin .ipz-com-form .wide {grid-column:auto;}
+}
+@media (max-width: 520px) {
+  .adm #ipz-community-admin .ipz-com-grid {grid-template-columns:1fr;}
+  .adm .ipz-report-grid {grid-template-columns:1fr;}
+  .adm .ipz-report-info {padding:16px;}
+  .adm .ipz-report-card {padding:20px;}
+}
+@media (prefers-reduced-motion: reduce) {
+  .adm #ipz-community-admin button {transition: none !important;transform: none !important;}
+}
