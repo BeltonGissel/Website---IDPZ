@@ -80,32 +80,6 @@ async function boot(){
  WHERE NOT (data ? 'categoryVersion')
    AND (data->>'c') ~ '^[0-5]$'`);
  for(const p of catalog)await pool.query('INSERT INTO ipz_products(id,data) VALUES($1,$2::jsonb) ON CONFLICT(id) DO NOTHING',[p.id,JSON.stringify({...p,pub:true})]);
- await seedDemoTournaments();
-}
-
-// Dados fictícios para demonstração. A marca de seed impede recriação após
-// o administrador eliminar os exemplos. Não modifica torneios existentes.
-const demoTournaments = [{"id": "TOR-DEMO-OPEN-2026", "title": "Indoor Padel Open — Exemplo", "date": "2026-09-19", "capacity": 8, "participants": ["Jogador Exemplo A", "Jogador Exemplo B", "Jogador Exemplo C", "Jogador Exemplo D", "Jogador Exemplo E", "Jogador Exemplo F", "Jogador Exemplo G", "Jogador Exemplo H"], "ranking": [{"position": 1, "name": "Jogador Exemplo A", "wins": 4, "points": 120}, {"position": 2, "name": "Jogador Exemplo B", "wins": 3, "points": 105}, {"position": 3, "name": "Jogador Exemplo C", "wins": 2, "points": 90}, {"position": 4, "name": "Jogador Exemplo D", "wins": 1, "points": 75}, {"position": 5, "name": "Jogador Exemplo E", "wins": 0, "points": 60}, {"position": 6, "name": "Jogador Exemplo F", "wins": 0, "points": 45}, {"position": 7, "name": "Jogador Exemplo G", "wins": 0, "points": 30}, {"position": 8, "name": "Jogador Exemplo H", "wins": 0, "points": 15}], "status": "Concluído", "demo": true, "name": "Organização (exemplo)", "organizer": "Organização (exemplo)", "email": "exemplo@invalid.test", "phone": "000000000", "draw": [], "createdAt": "2026-09-19T12:00:00.000Z"}, {"id": "TOR-DEMO-TACA-2026", "title": "Taça Indoor de Outubro — Exemplo", "date": "2026-10-17", "capacity": 8, "participants": ["Atleta Exemplo A", "Atleta Exemplo B", "Atleta Exemplo C", "Atleta Exemplo D", "Atleta Exemplo E", "Atleta Exemplo F", "Atleta Exemplo G", "Atleta Exemplo H"], "ranking": [{"position": 1, "name": "Atleta Exemplo A", "wins": 5, "points": 110}, {"position": 2, "name": "Atleta Exemplo B", "wins": 4, "points": 98}, {"position": 3, "name": "Atleta Exemplo C", "wins": 3, "points": 86}, {"position": 4, "name": "Atleta Exemplo D", "wins": 2, "points": 74}, {"position": 5, "name": "Atleta Exemplo E", "wins": 1, "points": 62}, {"position": 6, "name": "Atleta Exemplo F", "wins": 0, "points": 50}, {"position": 7, "name": "Atleta Exemplo G", "wins": 0, "points": 38}, {"position": 8, "name": "Atleta Exemplo H", "wins": 0, "points": 26}], "status": "Concluído", "demo": true, "name": "Organização (exemplo)", "organizer": "Organização (exemplo)", "email": "exemplo@invalid.test", "phone": "000000000", "draw": [], "createdAt": "2026-10-17T12:00:00.000Z"}];
-async function seedDemoTournaments(){
- const client=await pool.connect();
- try{
-  await client.query('BEGIN');
-  const marker=await client.query("INSERT INTO ipz_seed_runs(key) VALUES('demo-tournaments-v13') ON CONFLICT DO NOTHING RETURNING key");
-  if(marker.rowCount){
-   for(let i=0;i<demoTournaments.length;i++){
-    const t=demoTournaments[i];
-    const inserted=await client.query('INSERT INTO ipz_tournaments(id,data) VALUES($1,$2::jsonb) ON CONFLICT DO NOTHING RETURNING id',[t.id,JSON.stringify(t)]);
-    if(inserted.rowCount){
-     const file=path.join(ROOT,`campeonato-exemplo-${i+1}.webp`);
-     const uri='data:image/webp;base64,'+fs.readFileSync(file).toString('base64');
-     await client.query('INSERT INTO ipz_tournament_photos(id,tournament_id,caption,image) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING',[
-      `TFOTO-DEMO-${i+1}`,t.id,i===0?'Ilustração do Indoor Padel Open (fictícia)':'Ilustração da Taça Indoor de Outubro (fictícia)',uri
-     ]);
-    }
-   }
-  }
-  await client.query('COMMIT');
- }catch(err){await client.query('ROLLBACK');throw err;}finally{client.release();}
 }
 
 function publicProduct(item){
@@ -380,10 +354,10 @@ function drawMatches(names){
  const matches=[];for(let i=0;i<list.length;i+=2)matches.push({a:list[i],b:list[i+1]||null});return matches;
 }
 async function galleryList(){const q=await pool.query('SELECT id,caption,created_at FROM ipz_gallery ORDER BY created_at DESC LIMIT 150');return q.rows.map(x=>({...x,url:'/api/gallery/image/'+x.id}));}
-async function tournamentList(admin=false){const q=await pool.query('SELECT id,data FROM ipz_tournaments ORDER BY (data->>\'date\') DESC LIMIT 300');return q.rows.filter(x=>admin||['Publicado','Concluído'].includes(x.data.status)).map(x=>{const item={id:x.id,...x.data};if(!admin){delete item.email;delete item.phone;}return item;});}
+async function tournamentList(admin=false){const q=await pool.query('SELECT id,data FROM ipz_tournaments ORDER BY (data->>\'date\') DESC LIMIT 300');return q.rows.filter(x=>!(x.data.demo===true||x.id.startsWith('TOR-DEMO-'))&&(admin||['Publicado','Concluído'].includes(x.data.status))).map(x=>{const item={id:x.id,...x.data};if(!admin){delete item.email;delete item.phone;}return item;});}
 async function publicTournament(id){
  const q=await pool.query('SELECT id,data FROM ipz_tournaments WHERE id=$1',[id]);
- if(!q.rows.length||!['Publicado','Concluído'].includes(q.rows[0].data.status))return null;
+ if(!q.rows.length||q.rows[0].data.demo===true||id.startsWith('TOR-DEMO-')||!['Publicado','Concluído'].includes(q.rows[0].data.status))return null;
  const item={id:q.rows[0].id,...q.rows[0].data};
  delete item.email;delete item.phone;
  const photos=await pool.query('SELECT id,caption FROM ipz_tournament_photos WHERE tournament_id=$1 ORDER BY created_at DESC LIMIT 80',[id]);
@@ -414,7 +388,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(r==='/api/tournaments'&&m==='GET')return json(res,200,{items:await tournamentList()});
   const tournamentPhoto=r.match(/^\/api\/tournaments\/photo\/([A-Za-z0-9_-]+)$/);
   if(tournamentPhoto&&m==='GET'){
-   const q=await pool.query(`SELECT p.image FROM ipz_tournament_photos p JOIN ipz_tournaments t ON t.id=p.tournament_id WHERE p.id=$1 AND t.data->>'status' IN ('Publicado','Concluído')`,[tournamentPhoto[1]]);
+   const q=await pool.query(`SELECT p.image FROM ipz_tournament_photos p JOIN ipz_tournaments t ON t.id=p.tournament_id WHERE p.id=$1 AND t.data->>'status' IN ('Publicado','Concluído') AND COALESCE((t.data->>'demo')::boolean,false)=false AND t.id NOT LIKE 'TOR-DEMO-%'`,[tournamentPhoto[1]]);
    const uri=q.rows[0]?.image;if(!uri)return error(res,404,'Imagem não encontrada');
    const type=uri.slice(5,uri.indexOf(';')),bytes=Buffer.from(uri.split(',')[1],'base64');
    res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'public,max-age=600','X-Content-Type-Options':'nosniff'});return res.end(bytes);
@@ -559,7 +533,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
  }
  if(m!=='GET'&&m!=='HEAD')return error(res,405,'Método não permitido');
  const file=r==='/'?'index.html':decodeURIComponent(r.slice(1));
- if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-status.css','monthly-reports.css','whatsapp-shop.css','booking-whatsapp.css','campeonato-exemplo-1.webp','campeonato-exemplo-2.webp','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
+ if(!['index.html','admin.html','script.js','styles.css','redesign.css','animations.css','animations.js','community.js','community.css','admin-enhancements.css','booking-v7.css','admin-ui.css','admin-ui.js','admin-status.css','monthly-reports.css','whatsapp-shop.css','booking-whatsapp.css','logo-theme.css','idpz-logo-white.png','court.svg','padel-balls.svg','favicon.ico'].includes(file))return error(res,404,'Ficheiro não encontrado');
  const abs=path.resolve(ROOT,file);fs.stat(abs,(e,info)=>{if(e||!info.isFile())return error(res,404,'Ficheiro não encontrado');
   res.writeHead(200,{'Content-Type':mime[path.extname(abs)]||'application/octet-stream','X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','X-Frame-Options':'DENY','Cache-Control':/\.(?:html|js|css)$/.test(file)?'no-cache, must-revalidate':'public, max-age=600'});
   if(m==='HEAD')return res.end();fs.createReadStream(abs).pipe(res);
