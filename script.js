@@ -256,7 +256,7 @@ function chip(s){var c={Entregue:"g",Confirmada:"g",Pago:"g",Cancelado:"r",Cance
 function mt(o){return!AQ||JSON.stringify(o).toLowerCase().indexOf(AQ)>=0}
 function admRender(sh){var el=$("#adm");if(!READY){el.innerHTML='<div class="ax">A carregar…</div>';return}
 if(!IS_ADM){el.innerHTML='<div class="ax ipz-login"><div class="ipz-login-mark">◉</div><h2>Área reservada</h2><p>Inicia sessão com as credenciais de Admin ou Recepcionista.</p><form id="admin-login"><label for="admin-email">Email profissional</label><input type="email" id="admin-email" required autocomplete="username" placeholder="nome@idpz.com"><label for="admin-pass">Palavra-passe</label><input type="password" id="admin-pass" required autocomplete="current-password"><div class="er" id="login-error" role="alert"></div><button class="btn" type="submit" style="margin-top:16px">Entrar no painel</button> <a class="btn bo" href="#home">Voltar ao site</a></form></div>';return}
-if(ROLE!=="admin"&&["admin-produtos","admin-galeria","admin-torneios"].includes(AH))AH="admin";if(sh||!el.querySelector(".ad-wrap")){var nav=[["admin","Painel"],["admin-pedidos","Compras"],["admin-reservas","Reservas"]].concat(ROLE==="admin"?[["admin-produtos","Produtos"],["admin-galeria","Galeria"],["admin-torneios","Torneios"]]:[]).concat([["admin-mensagens","Mensagens"]]),lg=($(".hl")||{}).src||"";
+if(ROLE!=="admin"&&["admin-produtos","admin-galeria","admin-torneios","admin-relatorios"].includes(AH))AH="admin";if(sh||!el.querySelector(".ad-wrap")){var nav=[["admin","Painel"],["admin-pedidos","Compras"],["admin-reservas","Reservas"]].concat(ROLE==="admin"?[["admin-produtos","Produtos"],["admin-galeria","Galeria"],["admin-torneios","Torneios"]]:[]).concat([["admin-mensagens","Mensagens"]]).concat(ROLE==="admin"?[["admin-relatorios","Relatórios"]]:[]),lg=($(".hl")||{}).src||"";
 var nb=MSG.filter(function(m){return!m.rd}).length;
 el.innerHTML='<div class="ad-wrap"><aside class="ad-sb"><a href="#home" aria-label="Ver o site"><img src="'+lg+'" alt="Indoor Padel Zone"></a><div class="ad-mn">MENU</div>'+nav.map(function(n){return '<a class="nl'+(n[0]===AH?" on":"")+'" href="#'+n[0]+'"><i></i>'+n[1]+(n[0]==="admin-mensagens"&&nb?'<b class="nbd">'+nb+"</b>":"")+"</a>"}).join("")+'<div class="ad-mn">GERAL</div><a class="nl" href="#home"><i></i>Ver o site</a><a class="nl" href="#loja"><i></i>Ver a loja</a><div class="ad-card"><b>Compras e reservas</b><br><span style="opacity:.75">Dados centralizados no servidor quando iniciado com npm start.</span></div><div class="ad-sidebar-spacer"></div><button class="nl ad-logout" type="button" data-logout="1"><i></i>Terminar sessão</button></aside><div class="ad-main"><div class="ad-top"><input id="aq" type="search" placeholder="Pesquisar" aria-label="Pesquisar" value="'+E(AQ)+'"><div class="ad-pf"><i>A</i><div><b>'+(ROLE==="admin"?"Administração":"Recepcionista")+'</b><br><small>'+(ROLE==="admin"?"admin@idpz.com":"geral@idpz.com")+'</small></div></div></div><div class="ad-demo"><b>Pedidos via WhatsApp</b> · Nenhuma cobrança é realizada pelo website. '+(REMOTE?'Registos partilhados pelo servidor.':'Pré-visualização local: dados limitados a este navegador.')+'</div><div class="ad-pg" id="adc"></div></div></div>'}
 admContent()}
@@ -264,32 +264,63 @@ function admRefresh(){if(document.body.classList.contains("adm")&&$("#adc")&&IS_
 function hd(t,s,x){return '<div class="ah"><div><h1>'+t+"</h1><p>"+s+"</p></div><div>"+(x||"")+"</div></div>"}
 function admContent(){var el=$("#adc"),h=AH;
  try{
- el.innerHTML=h==="admin-pedidos"?tbO():h==="admin-reservas"?tbB():h==="admin-produtos"?(ROLE==="admin"?tbP():dash()):h==="admin-mensagens"?tbM():["admin-galeria","admin-torneios"].includes(h)?'<section id="ipz-community-admin"><h2>A carregar…</h2></section>':dash();
+ el.innerHTML=h==="admin-pedidos"?tbO():h==="admin-reservas"?tbB():h==="admin-produtos"?(ROLE==="admin"?tbP():dash()):h==="admin-mensagens"?tbM():h==="admin-relatorios"?(ROLE==="admin"?reportsPage():dash()):["admin-galeria","admin-torneios"].includes(h)?'<section id="ipz-community-admin"><h2>A carregar…</h2></section>':dash();
  if(["admin-galeria","admin-torneios"].includes(h)&&window.IPZCommunity)window.IPZCommunity.renderAdmin(h,{orders:ORD,bookings:BKG});
  }catch(error){console.error('Erro ao apresentar a secção administrativa:',h,error);el.innerHTML='<section class="kp" role="alert"><h2>Não foi possível apresentar esta secção</h2><p>Actualiza a página. Se o erro continuar, abre a consola do navegador e envia a mensagem à equipa técnica.</p></section>';}
 }
-function dash(){var ok=ORD.filter(function(o){return o.st!=="Cancelado"}),rev=0,i;ok.filter(function(o){return o.st==='Entregue'}).forEach(function(o){rev+=o.total});
-var pend=BKG.filter(function(b){return b.st==="Pendente"}).length,unr=MSG.filter(function(m){return!m.rd}).length,days=[],mx=1,best=null;
+function dash(){
+// O painel começa automaticamente um novo mês à meia-noite em Maputo;
+// o histórico permanece no Neon e pode ser exportado em Relatórios.
+var monthlyOrders=ORD.filter(ipzCreatedThisMonth),monthlyBookings=BKG.filter(ipzCreatedThisMonth),monthlyMessages=MSG.filter(ipzCreatedThisMonth);var ok=monthlyOrders.filter(function(o){return o.st!=="Cancelado"}),rev=0,i;ok.filter(function(o){return o.st==='Entregue'}).forEach(function(o){rev+=o.total});
+var pend=monthlyBookings.filter(function(b){return b.st==="Pendente"}).length,unr=monthlyMessages.filter(function(m){return!m.rd}).length,days=[],mx=1,best=null;
 for(i=6;i>=0;i--){var d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);days.push({d:d,n:0})}
 ok.forEach(function(o){var t=new Date(o.at);t.setHours(0,0,0,0);days.forEach(function(x){if(x.d.getTime()===t.getTime())x.n++})});
 days.forEach(function(x){if(x.n>mx)mx=x.n;if(x.n&&(!best||x.n>best.n))best=x});
 var bars=days.map(function(x){return '<div class="bc"><div class="bb '+(x.n?(x===best?"hi":"md"):"hz")+'" style="height:'+(x.n?30+70*x.n/mx:40)+'%">'+(x.n||"")+"</div><small>"+"DSTQQSS".charAt(x.d.getDay())+"</small></div>"}).join("");
-var nowT=new Date(),nx=BKG.filter(function(b){return b.st!=="Cancelada"&&new Date(b.date+"T"+b.time)>=nowT}).sort(function(a,b){return(a.date+a.time)>(b.date+b.time)?1:-1})[0];
-var ty=nowT.getFullYear()+"-"+("0"+(nowT.getMonth()+1)).slice(-2)+"-"+("0"+nowT.getDate()).slice(-2),hoje=BKG.filter(function(b){return b.date===ty&&b.st!=="Cancelada"});
+var nowT=new Date(),nx=monthlyBookings.filter(function(b){return b.st!=="Cancelada"&&new Date(b.date+"T"+b.time)>=nowT}).sort(function(a,b){return(a.date+a.time)>(b.date+b.time)?1:-1})[0];
+var ty=nowT.getFullYear()+"-"+("0"+(nowT.getMonth()+1)).slice(-2)+"-"+("0"+nowT.getDate()).slice(-2),hoje=monthlyBookings.filter(function(b){return b.date===ty&&b.st!=="Cancelada"});
 var dn=ok.filter(function(o){return o.st==="Entregue"}).length,pg=ok.filter(function(o){return o.st==="Em preparação"||o.st==="Pronto"}).length,pd=ok.length-dn-pg,pc=ok.length?Math.round(dn/ok.length*100):0,a1=ok.length?dn/ok.length*100:0,a2=ok.length?pg/ok.length*100:0,a3=ok.length?pd/ok.length*100:0;
 var arc='<path d="M20 100A80 80 0 0 1 180 100" pathLength="100" fill="none" stroke-width="26" stroke-linecap="butt" ';
 var low=PR.filter(function(p){return p.pub!==false&&p.s<=3}).sort(function(a,b){return a.s-b.s}).slice(0,5),cl=["#fbd5d5","#d5f0c8","#d5dcfb","#fbe9c4"];
-return hd("Painel","Compras, reservas e mensagens do website.",(ROLE==='admin'?'<a class="btn" href="#admin-produtos" style="padding:11px 20px">+ Adicionar Produto</a> ':'')+'<button class="btn bo" data-ex="1" style="padding:11px 20px">Exportar Excel · 45 dias</button>')+
-'<div class="dg"><div class="kp k1"><div class="kt">Compras totais<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+ORD.length+'</div><small>'+ORD.filter(function(o){return o.st==="Por processar"}).length+' por processar</small></div>'+
-'<div class="kp"><div class="kt">Histórico de encomendas<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+rev.toLocaleString("pt-PT")+'<small> MT</small></div><small class="gr">Registos antigos, sem cobrança actual</small></div>'+
-'<div class="kp"><div class="kt">Reservas<a href="#admin-reservas" class="ka">↗</a></div><div class="kn">'+BKG.length+'</div><small class="gr">'+pend+' por confirmar</small></div>'+
-'<div class="kp"><div class="kt">Mensagens<a href="#admin-mensagens" class="ka">↗</a></div><div class="kn">'+MSG.length+'</div><small class="gr">'+unr+' por ler</small></div>'+
+return hd("Painel","Indicadores do mês actual · "+ipzCurrentMonthLabel()+" · Maputo. Histórico em Relatórios.",(ROLE==='admin'?'<a class="btn" href="#admin-produtos" style="padding:11px 20px">+ Adicionar Produto</a> ':'')+'<button class="btn bo" data-ex="1" style="padding:11px 20px">Exportar Excel · 45 dias</button>')+
+'<div class="dg"><div class="kp k1"><div class="kt">Compras totais<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+monthlyOrders.length+'</div><small>'+monthlyOrders.filter(function(o){return o.st==="Por processar"}).length+' por processar</small></div>'+
+'<div class="kp"><div class="kt">Vendas entregues no mês<a href="#admin-pedidos" class="ka">↗</a></div><div class="kn">'+rev.toLocaleString("pt-PT")+'<small> MT</small></div><small class="gr">Valor estimado das encomendas entregues; pagamento a confirmar</small></div>'+
+'<div class="kp"><div class="kt">Reservas<a href="#admin-reservas" class="ka">↗</a></div><div class="kn">'+monthlyBookings.length+'</div><small class="gr">'+pend+' por confirmar</small></div>'+
+'<div class="kp"><div class="kt">Mensagens<a href="#admin-mensagens" class="ka">↗</a></div><div class="kn">'+monthlyMessages.length+'</div><small class="gr">'+unr+' por ler</small></div>'+
 '<div class="kp span2"><div class="kt">Compras nos últimos 7 dias</div><div class="bs">'+bars+'</div></div>'+
 '<div class="kp"><div class="kt">Próxima reserva</div>'+(nx?'<div class="rm">'+E(nx.court)+"</div><small>"+E(nx.date.split("-").reverse().join("/"))+" · "+E(nx.time)+"<br>"+E(nx.cn)+"</small>":'<div class="rm" style="font-size:1rem;color:#7b8892">Sem reservas futuras</div>')+'<a class="btn" href="#admin-reservas" style="margin-top:14px;justify-content:center;padding:11px 16px">Ver reservas</a></div>'+
 '<div class="kp"><div class="kt">Stock baixo<a href="#admin-produtos" class="ka">↗</a></div>'+(low.length?low.map(function(p){return '<div class="li"><span>'+E(p.n)+"</span><b>"+(p.s<=0?"Esgotado":p.s+" un.")+"</b></div>"}).join(""):"<small>Tudo em ordem.</small>")+"</div>"+
 '<div class="kp span2"><div class="kt">Compras recentes<a href="#admin-pedidos" class="ka">↗</a></div>'+(ok.length?ok.slice(0,4).map(function(o,i){var n=o.items.reduce(function(a,x){return a+x.q},0);return '<div class="li" style="align-items:center"><span style="display:flex;gap:10px;align-items:center"><i class="av" style="background:'+cl[i%4]+'">'+E((o.cn||"?").charAt(0).toUpperCase())+"</i><span><b>"+E(o.cn)+"</b><br><small>"+n+" item(s) · "+o.total.toLocaleString("pt-PT")+" MT</small></span></span>"+chip(o.st)+"</div>"}).join(""):"<small>Ainda não há compras.</small>")+"</div>"+
 '<div class="kp"><div class="kt">Estado das compras</div><svg viewBox="0 0 200 110" style="width:100%;margin-top:8px">'+arc+'stroke="#e3e8ec" d="M20 100A80 80 0 0 1 180 100"/>'+arc+'stroke="#101E29" stroke-dasharray="'+a1+' 100"/>'+arc+'stroke="#1673B8" stroke-dasharray="'+a2+' 100" stroke-dashoffset="'+(-a1)+'"/>'+arc+'stroke="#CFF902" stroke-dasharray="'+a3+' 100" stroke-dashoffset="'+(-(a1+a2))+'"/><text x="100" y="92" text-anchor="middle" font-size="34" font-weight="700" fill="#101E29">'+pc+'%</text></svg><div class="lg2"><span><i style="background:#101E29"></i>Entregue</span><span><i style="background:#1673B8"></i>Em curso</span><span><i style="background:#CFF902"></i>Por processar</span></div></div>'+
 '<div class="kp k2"><div class="kt" style="color:#fff">Reservas de hoje</div><div class="kn" style="color:#CFF902">'+hoje.length+'</div><small style="color:#cdd6dd">'+(hoje.length?"Próxima às "+E(hoje.sort(function(a,b){return a.time>b.time?1:-1})[0].time):"Nenhuma reserva hoje")+"</small></div></div>"}
+// Fecho automático do mês, sem eliminação de transacções ou reservas futuras.
+function ipzLocalMonth(date){
+ var d=new Date(date);if(!Number.isFinite(d.getTime()))return '';
+ var parts=new Intl.DateTimeFormat('sv-SE',{timeZone:'Africa/Maputo',year:'numeric',month:'2-digit'}).format(d);
+ return parts.slice(0,7);
+}
+function ipzCreatedThisMonth(item){return ipzLocalMonth(item.at||item.created_at||item.createdAt)===ipzLocalMonth(new Date());}
+function ipzCurrentMonthLabel(){return new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric',timeZone:'Africa/Maputo'}).format(new Date());}
+var ipzLastMonth=ipzLocalMonth(new Date());
+setInterval(function(){var current=ipzLocalMonth(new Date());if(current!==ipzLastMonth){ipzLastMonth=current;if(document.body.classList.contains('adm'))admRefresh();}},30000);
+
+function ipzReportDownload(month,button){
+ button.disabled=true;
+ fetch('/api/admin/reports/export?month='+encodeURIComponent(month),{credentials:'same-origin'})
+ .then(async function(response){if(!response.ok){var j=await response.json().catch(function(){return{}});throw Error(j.error||'Falha no relatório');}return response.blob();})
+ .then(function(blob){var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='IDPZ-relatorio-'+month+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},10000);})
+ .catch(function(err){toast(err.message)}).finally(function(){button.disabled=false;});
+}
+function reportsPage(){
+ var now=new Date(),year=Number(ipzLocalMonth(now).slice(0,4)),month=Number(ipzLocalMonth(now).slice(5));
+ var rows=Array.from({length:4},function(_,i){var d=new Date(Date.UTC(year,month-1-i,1)),key=d.toISOString().slice(0,7);return {key:key,label:new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric',timeZone:'UTC'}).format(d),current:i===0};});
+ return hd('Relatórios','Exportação Excel por mês · histórico disponível até 3 meses anteriores.')+
+ '<div class="ipz-report-info"><strong>Fecho mensal automático</strong><p>Todos os dias 1 o Painel apresenta os indicadores do novo mês a zero. Os registos anteriores permanecem guardados no Neon. Os Excel são gerados no momento do download e não ficam armazenados no Render.</p></div>'+
+ '<div class="ipz-report-grid">'+rows.map(function(x){return '<section class="ipz-report-card"><div><small>'+ (x.current?'MÊS ACTUAL':'MÊS ENCERRADO')+'</small><h2>'+E(x.label)+'</h2><p>'+ (x.current?'Relatório parcial até hoje.':'Compras, reservas, mensagens, produtos e torneios.')+'</p></div><button type="button" class="btn ipz-report-download" data-report-month="'+x.key+'">Descarregar Excel</button></section>'}).join('')+'</div>'+
+ '<p class="ipz-report-footnote">O período disponível é renovado automaticamente: quando entra um novo mês, o relatório mais antigo deixa de estar disponível. Ficheiros já descarregados para o teu computador não podem ser eliminados pelo website.</p>';
+}
+document.addEventListener('click',function(e){var b=e.target.closest('[data-report-month]');if(b){if(ROLE!=='admin'){toast('Acesso reservado ao administrador.');return;}ipzReportDownload(b.dataset.reportMonth,b);}});
+
 // Estados com filtros e alterações em rascunho, sem gravações involuntárias.
 var IPZ_STATE_FILTER={orders:'Todos',bookings:'Todos'};
 var IPZ_STATE_DRAFT={orders:{},bookings:{}};
