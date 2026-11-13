@@ -185,9 +185,7 @@ label.po{display:flex;gap:10px;align-items:center;border:1.5px solid #dde3e8;bor
 @media(max-width:980px){.ad-wrap{grid-template-columns:1fr}.dg{grid-template-columns:1fr 1fr}.ad-sb{flex-direction:row;flex-wrap:wrap;align-items:center}.ad-mn{display:none}.nl.on::before{display:none}.npg{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.dg{grid-template-columns:1fr}.span2{grid-column:auto}.ad-pf div{display:none}}
 
-/* Demonstração e acessibilidade do painel administrativo */
-.ad-demo{margin:12px 0 0;padding:12px 16px;border:1px solid #dbe6cf;background:#f5f9ec;color:#34501d;border-radius:16px;font:500 12px/1.5 Inter,sans-serif}
-.ad-demo b{font-weight:700}
+
 .ad-pg{min-width:0}
 .ad-main{min-width:0}
 .ad-wrap .tw{overflow-x:auto}
