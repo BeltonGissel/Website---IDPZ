@@ -33,3 +33,17 @@ const publicationServer=fs.readFileSync(path.join(__dirname,'server.js'),'utf8')
 const publicationHTML=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
 if(publicationServer.includes('seedDemoTournaments()'))throw Error('O servidor ainda inicializa torneios de demonstração');
 if(/\[por preencher\]|PRODUTOS E PREÇOS DE EXEMPLO|\[Texto editável/.test(publicationHTML))throw Error('Existem textos provisórios no website');
+
+// V34 — regressões de rotas e interface, sem modificar dados Neon.
+const calendarClient=fs.readFileSync('admin-calendar.js','utf8');
+const calendarCSS=fs.readFileSync('admin-calendar.css','utf8');
+assert(html.includes('admin-calendar.js?v=34')&&html.includes('admin-calendar.css?v=34'),'O calendário não está ligado ao HTML');
+assert(client.includes('admin-calendario')&&client.includes('window.IPZCalendar.render()'),'Falta navegação para Calendário');
+for(const token of ['/api/admin/calendar','ipz_court_blocks','rescheduleBooking','createCourtBlock','deleteCourtBlock','blockConflicts']){
+ assert(server.includes(token),'Falta funcionalidade no servidor: '+token);
+}
+for(const token of ['dayGrid','weekGrid','monthGrid','data-cal-reschedule','data-cal-status','wa.me/','data-cal-block']){
+ assert(calendarClient.includes(token),'Falta funcionalidade no calendário: '+token);
+}
+assert(calendarCSS.includes('#CFF902'),'Cor institucional do calendário incorrecta');
+console.log('OK: testes de estrutura da V34, rotas de calendário, bloqueios, reagendamento e WhatsApp.');
