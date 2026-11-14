@@ -72,3 +72,15 @@ assert(client.includes('ipz-profile-initial-only'),'Falta menu de utilizador com
 assert(!client.includes('Trocar painel'),'A opção Trocar painel não deve aparecer');
 assert(!client.includes('data-panel-switch'),'A troca de painel deve ter sido removida do menu');
 console.log('OK: V37 — credenciais por painel e menu apenas com a inicial.');
+
+// V38: criação de torneios exclusiva do Admin, capa vinculada à foto existente e galeria editorial.
+const community=fs.readFileSync('community.js','utf8');
+const communityCSS=fs.readFileSync('community.css','utf8');
+assert(!html.includes('id="ipz-tournament-public"'),'Formulário público de torneios ainda presente');
+assert(!html.includes('data-create-tournament'),'Botão público de criação de torneios ainda presente');
+assert(server.includes("if(r==='/api/tournaments'&&m==='POST')return error(res,403"),'POST público não está bloqueado');
+assert(server.includes("requireAccess(s,'tournaments.edit')"),'Autorização para gestão de torneios em falta');
+assert(server.includes("/cover$/")&&server.includes("tournament_id=$1"),'Endpoint de capa não encontrado');
+assert(community.includes('ipz-editorial-gallery')&&communityCSS.includes('ipz-editorial-photo:hover figcaption'),'Galeria editorial ou hover em falta');
+assert(community.includes('ipz-tournament-cover')&&community.includes('data-tournament-cover'),'Cartão com capa ou selector de capa em falta');
+console.log('OK: V38 — galeria editorial, capas de torneios e criação restrita aos painéis.');
