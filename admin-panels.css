@@ -1,100 +1,90 @@
-/* V35: mantém o painel administrativo claro com acento institucional. */
-.adm .ipz-user-wrap {position:relative; z-index:30;}
-.adm .ipz-profile-trigger {display:flex; align-items:center; gap:12px; background:transparent; cursor:pointer; border:1px solid transparent; border-radius:18px; padding:9px 12px; font:inherit; color:#10232b; text-align:left;}
-.adm .ipz-profile-trigger:hover,.adm .ipz-profile-trigger:focus-visible {background:#e9eeee; border-color:#c5d3d4; outline:none;}
-.adm .ipz-profile-trigger>i{width:42px;height:42px;flex:none;border-radius:50%;background:#cff902;display:grid;place-items:center;font-style:normal;font-weight:800;color:#10232b;}
-.adm .ipz-profile-trigger b{font-size:13px;display:block;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis;}
-.adm .ipz-profile-trigger small{font-size:11px;display:block;color:#64717a;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis;}
-.adm .ipz-profile-popover{position:absolute;z-index:90;right:0;top:calc(100% + 10px);min-width:245px;background:#fff;border:1px solid #d8e2e3;border-radius:18px;box-shadow:0 22px 58px #10232b27;padding:10px;}
+/* V36 · Gestão de perfis — disposição inspirada num selector de perfis,
+   adaptada à identidade Indoor Padel Zone. Apenas dentro do Admin. */
+.adm .ipz-user-wrap {position:relative;z-index:30}
+.adm .ipz-profile-trigger{display:flex;align-items:center;gap:12px;background:transparent;cursor:pointer;border:1px solid transparent;border-radius:18px;padding:9px 12px;font:inherit;color:#10232b;text-align:left}
+.adm .ipz-profile-trigger:hover,.adm .ipz-profile-trigger:focus-visible{background:#e9eeee;border-color:#c5d3d4;outline:none}
+.adm .ipz-profile-trigger>i{width:42px;height:42px;flex:none;border-radius:50%;background:#cff902;display:grid;place-items:center;font-style:normal;font-weight:800;color:#10232b}
+.adm .ipz-profile-trigger b{font-size:13px;display:block;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.adm .ipz-profile-trigger small{font-size:11px;display:block;color:#64717a;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.adm .ipz-profile-popover{position:absolute;z-index:90;right:0;top:calc(100% + 10px);min-width:245px;background:#fff;border:1px solid #d8e2e3;border-radius:18px;box-shadow:0 22px 58px #10232b27;padding:10px}
 .adm .ipz-profile-popover[hidden]{display:none}
-.adm .ipz-profile-label{font-size:11px;text-transform:uppercase;letter-spacing:.055em;padding:10px 12px 5px;color:#667781;font-weight:800;}
-.adm .ipz-profile-item{box-sizing:border-box;display:block;width:100%;border:0;background:none;color:#10232b;text-align:left;border-radius:11px;padding:12px;font:inherit;font-size:13px;text-decoration:none;cursor:pointer;}
-.adm .ipz-profile-item:hover,.adm .ipz-profile-item:focus-visible{background:#f3f8e5;outline:none;}
-.adm .ipz-profile-item.active{background:#cff902;font-weight:800;}
-.adm .ipz-profile-exit{margin-top:8px;border-top:1px solid #edf0f0;color:#7a3434;}
-.adm .ipz-manager{--lime:#cff902;color:#11232c;max-width:1260px;}
-.adm .ipz-manager-head{margin-bottom:24px;}.adm .ipz-manager-head h1{font-size:clamp(28px,3vw,42px);letter-spacing:-.045em;margin:0 0 6px;}.adm .ipz-manager-head p{color:#5e6e76;}
-.adm .ipz-manager-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-bottom:18px;}
-.adm .ipz-manager-card{background:white;border:1px solid #e0e7e8;border-radius:24px;padding:24px;min-width:0;margin-bottom:18px;box-shadow:0 6px 20px #12232b05;}
-.adm .ipz-manager-card h2{font-size:22px;color:#10232b;margin:0 0 8px;}.adm .ipz-manager-card h3{font-size:15px;margin:14px 0 10px;}.adm .ipz-manager-card p{font-size:13px;color:#63747d;}
-.adm .ipz-manager-notice{padding:16px 20px;border:1px solid #d9e7ad;background:#f5f9e8;border-radius:16px;margin-bottom:20px;color:#415134;font-size:13px;}
-.adm .ipz-manager-field{display:flex;flex-direction:column;gap:6px;font-weight:650;color:#334852;font-size:13px;margin:10px 0;}
-.adm .ipz-manager-field input{border:1px solid #d1dfe2;border-radius:12px;background:#fff;color:#12232b;padding:13px;min-width:0;width:100%;box-sizing:border-box;min-height:44px;}
-.adm .ipz-manager-field input:focus-visible{outline:2px solid #cff902;outline-offset:2px;}
-.adm .ipz-manager-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
-.adm .ipz-permissions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0;}
-.adm .ipz-permissions{min-width:0;border:1px solid #e2e9e9;border-radius:14px;padding:12px;}.adm .ipz-permissions legend{font-weight:800;font-size:12px;padding:0 6px;}
-.adm .ipz-panel-check{display:flex;align-items:center;gap:9px;font-size:12px;color:#344750;margin:9px 0;cursor:pointer;}.adm .ipz-panel-check input{appearance:auto;accent-color:#b4df00;width:16px;height:16px;flex:none;}
-.adm .ipz-panel-checks{display:flex;flex-wrap:wrap;gap:8px 17px;padding:12px 14px;background:#f6f8f8;border-radius:12px;}
-.adm .ipz-manager-primary,.adm .ipz-manager-outline,.adm .ipz-manager-danger{cursor:pointer;border-radius:999px;padding:12px 17px;min-height:43px;font:inherit;font-size:13px;font-weight:750;}
-.adm .ipz-manager-primary{background:#cff902;color:#10232b;border:1px solid #cff902;}.adm .ipz-manager-primary:hover{background:#bbeb00;}
-.adm .ipz-manager-outline{background:#fff;color:#10232b;border:1px solid #bdcdd0;}.adm .ipz-manager-danger{background:#fff;color:#a03b3b;border:1px solid #f1c6c6;}
-.adm .ipz-profile-card,.adm .ipz-staff-card{border:1px solid #e0e7e8;border-radius:16px;padding:16px;margin:12px 0;background:#fff;min-width:0;}
-.adm .ipz-profile-card-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}.adm .ipz-profile-card-top>div{flex:1;min-width:150px;}.adm .ipz-profile-card b,.adm .ipz-staff-card b{font-size:14px;display:block;overflow-wrap:anywhere;}.adm .ipz-profile-card small,.adm .ipz-staff-card small{font-size:11px;color:#75858d;display:block;}
-.adm .ipz-manager-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;}
-.adm .ipz-staff-card{background:#fcfdfd;padding:20px;}
-@media(max-width:850px){.adm .ipz-manager-grid,.adm .ipz-manager-fields{grid-template-columns:1fr}.adm .ipz-permissions-grid{grid-template-columns:1fr}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{max-width:105px}}
-@media(max-width:550px){.adm .ipz-manager-card{padding:16px}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{display:none}}
-
-.adm #ipz-community-admin [hidden],.adm .ipz-manager [hidden]{display:none!important;}
-
-/* V36 - Selector circular de perfis. Layout visual do gestor, sem alterar o website público. */
-.adm .ipz-v36{max-width:none;color:#15252c;--accent:#CFF902;min-width:0}
-.adm .ipz-v36-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;font-size:11px;font-weight:800;letter-spacing:.13em;color:#657781}
-.adm .ipz-v36-back{border:0;background:transparent;padding:10px 4px;font:inherit;letter-spacing:0;cursor:pointer;color:#344b56}
-.adm .ipz-v36-stage{background:linear-gradient(150deg,#192327,#10191d);color:#f5f8f7;border-radius:28px;min-height:460px;padding:clamp(22px,4vw,56px) clamp(18px,4.5vw,68px) 38px;box-shadow:0 18px 60px #10232b10}
-.adm .ipz-v36-heading{text-align:center;max-width:720px;margin:0 auto 38px}
-.adm .ipz-v36-heading h1{font-size:clamp(24px,2.7vw,38px);font-weight:700;line-height:1.15;margin:14px 0 10px;letter-spacing:-.04em;color:#f4f8f7}
-.adm .ipz-v36-heading p{font-size:14px;color:#adbbbe;margin:0}
-.adm .ipz-v36-logo{font-size:18px;font-weight:900;letter-spacing:-.09em;color:white}
-.adm .ipz-v36-logo span{color:var(--accent);font-size:18px;padding-left:3px}
-.adm .ipz-v36-profiles{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;max-width:1020px;margin:0 auto}
-.adm .ipz-v36-tile{position:relative;appearance:none;display:flex;flex-direction:column;align-items:center;justify-content:center;width:160px;min-height:183px;border:1px solid #53606475;background:#2a3439;color:#fff;border-radius:17px;padding:18px 11px;cursor:pointer;font:inherit;transition:transform .18s,background .18s,border-color .18s,box-shadow .18s}
-.adm .ipz-v36-tile:hover,.adm .ipz-v36-tile:focus-visible{transform:translateY(-4px);background:#364248;border-color:var(--accent);outline:none}
-.adm .ipz-v36-tile.is-active{border-color:var(--accent);box-shadow:0 0 0 2px #cff90245;background:#354044}
-.adm .ipz-v36-avatar{width:78px;height:78px;display:grid;place-items:center;flex:none;border-radius:50%;background:var(--avatar,#cff902);color:#142328;border:3px solid #ffffff0f;font-size:26px;font-weight:850;letter-spacing:-.07em;margin-bottom:14px}
-.adm .ipz-v36-tile strong{font-size:14px;line-height:1.3;text-align:center;max-width:100%;overflow-wrap:anywhere}
-.adm .ipz-v36-tile small{color:#b1bdc0;font-size:11px;margin-top:6px}
-.adm .ipz-v36-new-tile{background:transparent;border:1px dashed #9cabad80}
-.adm .ipz-v36-add-avatar{background:#6a777c;color:white;font-size:40px;font-weight:400}
-.adm .ipz-v36-edit-badge{position:absolute;right:8px;top:8px;color:var(--accent);font-size:19px}
-.adm .ipz-v36-details{background:#f9fbfb;color:#12232b;border:1px solid #dbe5e6;border-radius:20px;padding:21px;margin:32px auto 0;max-width:930px}
-.adm .ipz-v36-detail-top{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.adm .ipz-v36-detail-top>div{flex:1;min-width:180px}
-.adm .ipz-v36-details h2{margin:0 0 4px;font-size:20px;color:#12232b}
-.adm .ipz-v36-details p{color:#687980;font-size:12px;margin:0}
-.adm .ipz-v36-pills{display:flex;flex-wrap:wrap;gap:7px;margin-top:17px}
-.adm .ipz-v36-pills span{background:#edf2f2;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:700;color:#425861}
-.adm .ipz-v36-details .ipz-v36-members{margin-top:14px}
-.adm .ipz-v36-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding:23px 4px 8px}
-.adm .ipz-v36-add-profile{border:1px solid #d4dfe0;border-radius:999px;background:white;color:#14232c;display:flex;gap:9px;align-items:center;padding:11px 20px;font:inherit;font-weight:750;font-size:13px;cursor:pointer}
-.adm .ipz-v36-add-profile span{font-size:20px;line-height:12px}
-.adm .ipz-v36-add-profile:hover{border-color:#8ea600;background:#f8ffe6}
-.adm .ipz-v36-toggle-label{display:flex;gap:12px;align-items:center;font-size:13px;font-weight:800;cursor:pointer}
-.adm .ipz-v36-toggle-label input{position:absolute;opacity:0;width:1px;height:1px}
-.adm .ipz-v36-track{width:46px;height:25px;border-radius:999px;background:#aab5b8;position:relative;transition:background .2s}
-.adm .ipz-v36-track:before{content:"";position:absolute;top:4px;left:4px;width:17px;height:17px;border-radius:50%;background:white;transition:transform .2s}
-.adm .ipz-v36-toggle-label input:checked+.ipz-v36-track{background:#CFF902}
-.adm .ipz-v36-toggle-label input:checked+.ipz-v36-track:before{transform:translateX(21px);background:#10232b}
-.adm .ipz-v36-toggle-label input:focus-visible+.ipz-v36-track{outline:3px solid #a7bde5;outline-offset:2px}
-.adm .ipz-v36-staff{background:#fff;border:1px solid #dfe8e9;border-radius:23px;padding:24px;margin-top:22px}
-.adm .ipz-v36-staff-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:19px}
-.adm .ipz-v36-staff-heading h2{font-size:21px;color:#10232b;margin:0 0 5px}
-.adm .ipz-v36-staff-heading p{margin:0;color:#63747d;font-size:12px}
-.adm .ipz-v36-staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
-.adm .ipz-v36-staff-person{display:flex;gap:11px;align-items:center;padding:15px;border:1px solid #e4ebeb;border-radius:16px;min-width:0}
-.adm .ipz-v36-staff-person>div:nth-child(2){flex:1;min-width:0}
-.adm .ipz-v36-staff-person strong,.adm .ipz-v36-staff-person small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.adm .ipz-v36-staff-person strong{font-size:13px}
-.adm .ipz-v36-staff-person small{font-size:11px;color:#75858d;margin-top:2px}
-.adm .ipz-v36-staff-initial{display:grid;place-items:center;width:39px;height:39px;border-radius:50%;background:#CFF902;font-weight:800;flex:none}
-.adm .ipz-v36-overlay{position:fixed;z-index:9999;inset:0;background:#0a1117a8;display:flex;align-items:center;justify-content:center;padding:20px}
-.adm .ipz-v36-dialog{background:#fff;border:1px solid #d3dfe0;border-radius:24px;padding:25px;width:min(720px,100%);max-height:87vh;overflow-y:auto;box-shadow:0 28px 85px #0004;color:#10232b}
-.adm .ipz-v36-dialog-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.adm .ipz-v36-dialog-header h2{font-size:23px;margin:0;color:#10232b}
-.adm .ipz-v36-close{border:0;background:#edf2f2;border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:25px;color:#13272b}
-.adm .ipz-v36-hint{color:#62747c;font-size:12px}
-.adm .ipz-v36-dialog-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
-.adm .ipz-v36-loading{padding:45px 20px;text-align:center}
-@media(max-width:700px){.adm .ipz-v36-stage{padding:25px 15px}.adm .ipz-v36-tile{width:calc(50% - 9px);max-width:165px}.adm .ipz-v36-profiles{gap:12px}.adm .ipz-v36-avatar{width:66px;height:66px}.adm .ipz-v36-footer{padding:18px 0}.adm .ipz-v36-dialog{padding:17px}.adm .ipz-v36-staff{padding:15px}}
-@media(prefers-reduced-motion:reduce){.adm .ipz-v36-tile,.adm .ipz-v36-track,.adm .ipz-v36-track:before{transition:none!important}}
+.adm .ipz-profile-label{font-size:11px;text-transform:uppercase;letter-spacing:.055em;padding:10px 12px 5px;color:#667781;font-weight:800}
+.adm .ipz-profile-item{box-sizing:border-box;display:block;width:100%;border:0;background:none;color:#10232b;text-align:left;border-radius:11px;padding:12px;font:inherit;font-size:13px;text-decoration:none;cursor:pointer}
+.adm .ipz-profile-item:hover,.adm .ipz-profile-item:focus-visible{background:#f3f8e5;outline:none}
+.adm .ipz-profile-item.active{background:#cff902;font-weight:800}
+.adm .ipz-profile-exit{margin-top:8px;border-top:1px solid #edf0f0;color:#7a3434}
+.adm .ipz-manager{--ipz-lime:#cff902;--ipz-ink:#10232b;--ipz-muted:#697981;--ipz-border:#dce5e6;color:var(--ipz-ink);width:100%;max-width:1260px;box-sizing:border-box}
+.adm .ipz-manager *{box-sizing:border-box}
+.adm .ipz-manager-head{margin:0 0 25px}
+.adm .ipz-eyebrow{color:#708007;font-size:11px;font-weight:850;letter-spacing:.13em}
+.adm .ipz-manager-head h1{font-size:clamp(28px,3.4vw,44px);letter-spacing:-.048em;line-height:1.14;margin:10px 0 6px;color:var(--ipz-ink)}
+.adm .ipz-manager-head p{color:var(--ipz-muted);font-size:14px;margin:0}
+.adm .ipz-profile-shell{background:#fff;border:1px solid #e4eaeb;box-shadow:0 15px 60px #142c3010;border-radius:30px;padding:clamp(22px,3.5vw,44px);min-height:620px}
+.adm .ipz-profile-shell-top{text-align:center;display:flex;align-items:center;flex-direction:column;gap:9px}
+.adm .ipz-profile-symbol{display:grid;place-items:center;width:54px;height:54px;border-radius:18px;background:#cff902;color:#10232b;font-size:27px;font-weight:800}
+.adm .ipz-shell-caption{font-size:clamp(19px,2vw,27px);font-weight:750;letter-spacing:-.04em;margin:5px 0 6px}
+.adm .ipz-selector-tabs{display:inline-flex;align-items:center;gap:5px;padding:5px;background:#f2f5f5;border-radius:100px;border:1px solid #e5ecec}
+.adm .ipz-selector-tabs button{border:0;border-radius:100px;padding:9px 19px;color:#53656e;background:transparent;cursor:pointer;font:inherit;font-size:13px;font-weight:750;transition:.2s}
+.adm .ipz-selector-tabs button.active{background:#cff902;color:#10232b;box-shadow:0 2px 8px #bccd2a33}
+.adm .ipz-profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));max-width:880px;margin:34px auto 22px;gap:14px;justify-items:center;align-items:start}
+.adm .ipz-circle-profile{position:relative;width:100%;max-width:185px;min-height:185px;padding:15px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;background:#f8faf9;border:1px solid #e4ebeb;border-radius:21px;cursor:pointer;color:#10232b;font:inherit;transition:transform .23s ease,background .23s ease,box-shadow .23s ease,border-color .23s ease;text-align:center}
+.adm .ipz-circle-profile:hover,.adm .ipz-circle-profile:focus-visible{background:#f2f8de;border-color:#b7d445;transform:translateY(-4px);box-shadow:0 8px 20px #112a2d15;outline:0}
+.adm .ipz-circle-profile.is-selected{border:2px solid #b6dd00;background:#f8fde8;box-shadow:0 0 0 3px #cff90220}
+.adm .ipz-circle-avatar{position:relative;display:grid;place-items:center;flex:none;width:83px;height:83px;aspect-ratio:1;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #d5dfdf,0 5px 15px #0e28241e;color:#132a2f;background:#dceee6;font-weight:850;font-size:27px;letter-spacing:-.04em}
+.adm .ipz-tone-0{background:linear-gradient(135deg,#cdf900,#a4d107)}
+.adm .ipz-tone-1{background:linear-gradient(135deg,#c9eae2,#95cbbe)}
+.adm .ipz-tone-2{background:linear-gradient(135deg,#e9e5fb,#b9b0dc)}
+.adm .ipz-tone-3{background:linear-gradient(135deg,#fdecc6,#dfcc99)}
+.adm .ipz-tone-4{background:linear-gradient(135deg,#d6e3f6,#adc8ea)}
+.adm .ipz-circle-profile.is-selected .ipz-circle-avatar{box-shadow:0 0 0 3px #cff902,0 7px 17px #142f2822}
+.adm .ipz-circle-name{font-size:14px;font-weight:800;line-height:1.23;overflow-wrap:anywhere;max-width:165px}
+.adm .ipz-circle-profile small{color:#697b80;font-size:11px;line-height:1.35;max-width:165px}
+.adm .ipz-circle-pencil{position:absolute;top:11px;right:12px;color:#6c7b42;font-size:15px}
+.adm .ipz-profile-noitems{color:#65777c;grid-column:1/-1}
+.adm .ipz-selected-profile{margin:20px auto 26px;max-width:880px;padding:22px;border:1px solid #e1e8e9;border-radius:22px;background:#fafcfb;min-height:128px}
+.adm .ipz-selected-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.adm .ipz-selected-header h3{font-size:21px;letter-spacing:-.03em;margin:5px 0 2px;color:#10232b}
+.adm .ipz-selected-header p{margin:0;color:#697981;font-size:13px;overflow-wrap:anywhere}
+.adm .ipz-access-pill{border-radius:100px;padding:7px 11px;background:#edf4d8;color:#53600d;font-size:11px;font-weight:800;white-space:nowrap}
+.adm .ipz-permission-tags{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0 0}
+.adm .ipz-permission-tags span{background:#edf2f2;color:#40525c;border-radius:100px;padding:7px 10px;font-size:11px;font-weight:650}
+.adm .ipz-linked-people{font-size:13px;color:#566a74;margin:15px 0 0}
+.adm .ipz-detail-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:19px}
+.adm .ipz-profile-empty{color:#687981;text-align:center;padding:30px 8px;font-size:14px}
+.adm .ipz-profile-empty span{display:block;font-size:28px;margin-bottom:10px}
+.adm .ipz-profile-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-top:1px solid #e6ecec;padding-top:25px}
+.adm .ipz-manager-primary,.adm .ipz-manager-outline,.adm .ipz-manager-danger{font:inherit;font-size:13px;font-weight:800;cursor:pointer;min-height:45px;padding:11px 20px;border-radius:100px;transition:transform .2s,background .2s}
+.adm .ipz-manager-primary{color:#10232b;background:#cff902;border:1px solid #cff902}
+.adm .ipz-manager-primary:hover,.adm .ipz-manager-primary:focus-visible{background:#bcea00;transform:translateY(-1px)}
+.adm .ipz-manager-outline{color:#10232b;background:white;border:1px solid #b8cbd0}
+.adm .ipz-manager-outline:hover,.adm .ipz-manager-outline:focus-visible{border-color:#9cbd00;background:#f8fde8}
+.adm .ipz-manager-danger{color:#9d3131;background:#fff;border:1px solid #efcbcb}
+.adm .ipz-manager-danger:hover{background:#fff2f2}
+.adm .ipz-manager-primary:disabled{opacity:.55;cursor:wait}
+.adm .ipz-bottom-action{display:inline-flex;align-items:center;gap:10px}
+.adm .ipz-bottom-action-icon{font-size:18px;line-height:1}
+.adm .ipz-bottom-action.is-active{background:#b8e500}
+.adm .ipz-manager-feedback{margin:12px 2px;color:#526f16;font-size:13px}
+.adm .ipz-manager-loading{padding:32px;color:#697981}
+.adm .ipz-modal-backdrop{position:fixed;inset:0;z-index:400;display:grid;place-items:center;padding:20px;background:#071216a8;backdrop-filter:blur(6px)}
+.adm .ipz-profile-dialog{width:min(840px,100%);max-height:min(90vh,850px);overflow-y:auto;overscroll-behavior:contain;border:1px solid #dfe9e9;border-radius:24px;background:#fff;color:#10232b;box-shadow:0 25px 90px #05161988;padding:clamp(20px,3vw,32px)}
+.adm .ipz-profile-dialog-head{display:flex;justify-content:space-between;align-items:start;gap:15px;margin-bottom:20px}
+.adm .ipz-profile-dialog-head h2{font-size:26px;letter-spacing:-.035em;margin:8px 0 0}
+.adm .ipz-dialog-close{background:#eff3f3;border:0;color:#10232b;border-radius:100%;width:36px;height:36px;font-size:24px;line-height:1;cursor:pointer}
+.adm .ipz-dialog-instruction{font-size:13px;color:#5b6c76;margin:18px 0 8px}
+.adm .ipz-manager-field{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:750;color:#344952;margin:10px 0}
+.adm .ipz-manager-field input{font:inherit;min-height:47px;width:100%;background:#fff;color:#10232b;border:1px solid #d0dee0;border-radius:13px;padding:12px 14px;outline-offset:2px}
+.adm .ipz-manager-field input:focus-visible{outline:2px solid #cff902;border-color:#b5da00}
+.adm .ipz-manager-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.adm .ipz-permissions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:10px 0 23px}
+.adm .ipz-permissions{min-width:0;background:#fafcfa;border:1px solid #e0e8e8;border-radius:15px;padding:13px}
+.adm .ipz-permissions legend{font-size:12px;font-weight:850;padding:0 6px}
+.adm .ipz-panel-check{display:flex;align-items:center;gap:9px;margin:9px 0;cursor:pointer;font-size:12px;color:#364b55}
+.adm .ipz-panel-check input{appearance:auto;accent-color:#b9e800;flex:none;width:17px;height:17px}
+.adm .ipz-panel-checks{display:flex;flex-wrap:wrap;gap:8px 15px;background:#f4f7f7;border-radius:15px;padding:14px}
+.adm .ipz-form-status{color:#a33c3c;font-size:13px;min-height:15px}
+.adm .ipz-manager-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:15px}
+.adm .ipz-manager [hidden],.adm .ipz-modal-backdrop[hidden]{display:none!important}
+@media(max-width:850px){.adm .ipz-profile-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{max-width:105px}}
+@media(max-width:620px){.adm .ipz-profile-shell{padding:20px 13px;border-radius:20px}.adm .ipz-profile-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.adm .ipz-circle-profile{max-width:none;min-height:169px;padding:12px 6px}.adm .ipz-circle-avatar{width:70px;height:70px;font-size:23px}.adm .ipz-permissions-grid,.adm .ipz-manager-fields{grid-template-columns:1fr}.adm .ipz-selected-header{align-items:flex-start;flex-direction:column}.adm .ipz-profile-toolbar{flex-direction:column;align-items:stretch}.adm .ipz-bottom-action{justify-content:center}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{display:none}}
+@media(prefers-reduced-motion:reduce){.adm .ipz-circle-profile,.adm .ipz-manager-primary,.adm .ipz-manager-outline{transition:none}.adm .ipz-circle-profile:hover{transform:none}}
