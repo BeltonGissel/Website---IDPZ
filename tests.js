@@ -53,13 +53,22 @@ const permissionsClient=fs.readFileSync('admin-panels.js','utf8');
 for(const token of ['ipz_access_panels','ipz_staff_users','hashPassword','verifyPassword','normalizePermissions','requireAccess','/api/admin/switch-panel','/api/admin/staff','/api/admin/panels']){
  assert(server.includes(token),'Falta segurança/funcionalidade de perfis: '+token);
 }
-for(const token of ['data-profile-toggle','data-panel-switch','admin-gerir-paineis','profileMenu','IPZ_PANELS']){
+for(const token of ['data-profile-toggle','admin-gerir-paineis','profileMenu','IPZ_PANELS']){
  assert(client.includes(token),'Falta menu do utilizador: '+token);
 }
 for(const token of ['ipz-profile-form','create-panel','create-user','data-delete-panel','data-delete-staff','permEditor','data-edit-toggle','data-select-profile','data-profile-tab']){
  assert(permissionsClient.includes(token),'Falta gestão de painéis/utilizadores: '+token);
 }
-assert(html.includes('admin-panels.js?v=36')&&html.includes('admin-panels.css?v=36'),'Os ficheiros V36 não estão ligados ao HTML');
+assert(html.includes('admin-panels.js?v=37')&&html.includes('admin-panels.css?v=37'),'Os ficheiros V36 não estão ligados ao HTML');
 assert(server.includes("requireAccess(s,c+'.edit')"),'As alterações de estado devem validar permissões no servidor');
 assert(server.includes("requireAccess(s,sm[1]+'.view')"),'Os dados privados devem verificar permissões');
 console.log('OK: V36 — grelha de avatares circulares, botões de rodapé, formulários de permissões e rotas protegidas.');
+
+// V37: um painel criado deve gerar credenciais de login na mesma transacção.
+assert(server.includes('function validateStaffPassword('),'Falta validação de palavra-passe no servidor');
+assert(server.includes('await tx(async db=>{')&&server.includes('username,hashPassword(pw),[id]'),'Criação atómica de painel e login em falta');
+assert(permissionsClient.includes('name="username"')&&permissionsClient.includes('name="email"')&&permissionsClient.includes('name="password"'),'O formulário do painel requer nome de utilizador, email e senha');
+assert(client.includes('ipz-profile-initial-only'),'Falta menu de utilizador compacto');
+assert(!client.includes('Trocar painel'),'A opção Trocar painel não deve aparecer');
+assert(!client.includes('data-panel-switch'),'A troca de painel deve ter sido removida do menu');
+console.log('OK: V37 — credenciais por painel e menu apenas com a inicial.');
