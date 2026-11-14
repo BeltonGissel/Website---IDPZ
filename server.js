@@ -453,14 +453,24 @@ function drawMatches(names){
  const matches=[];for(let i=0;i<list.length;i+=2)matches.push({a:list[i],b:list[i+1]||null});return matches;
 }
 async function galleryList(){const q=await pool.query('SELECT id,caption,created_at FROM ipz_gallery ORDER BY created_at DESC LIMIT 150');return q.rows.map(x=>({...x,url:'/api/gallery/image/'+x.id}));}
-async function tournamentList(admin=false){const q=await pool.query('SELECT id,data FROM ipz_tournaments ORDER BY (data->>\'date\') DESC LIMIT 300');return q.rows.filter(x=>!(x.data.demo===true||x.id.startsWith('TOR-DEMO-'))&&(admin||['Publicado','Concluído'].includes(x.data.status))).map(x=>{const item={id:x.id,...x.data};if(!admin){delete item.email;delete item.phone;}return item;});}
+async function tournamentList(admin=false){
+ const q=await pool.query(`SELECT t.id,t.data,COALESCE(
+   (SELECT p.id FROM ipz_tournament_photos p WHERE p.tournament_id=t.id AND p.id=t.data->>'coverPhotoId' LIMIT 1),
+   (SELECT p.id FROM ipz_tournament_photos p WHERE p.tournament_id=t.id ORDER BY p.created_at DESC LIMIT 1)
+ ) AS cover_photo_id FROM ipz_tournaments t ORDER BY (t.data->>'date') DESC LIMIT 300`);
+ return q.rows.filter(x=>!(x.data.demo===true||x.id.startsWith('TOR-DEMO-'))&&(admin||['Publicado','Concluído'].includes(x.data.status)))
+  .map(x=>{const item={id:x.id,...x.data,coverUrl:x.cover_photo_id?(admin?'/api/admin/tournaments/photo/':'/api/tournaments/photo/')+x.cover_photo_id:null};
+   if(!admin){delete item.email;delete item.phone;delete item.coverPhotoId;}return item;});
+}
 async function publicTournament(id){
  const q=await pool.query('SELECT id,data FROM ipz_tournaments WHERE id=$1',[id]);
  if(!q.rows.length||q.rows[0].data.demo===true||id.startsWith('TOR-DEMO-')||!['Publicado','Concluído'].includes(q.rows[0].data.status))return null;
  const item={id:q.rows[0].id,...q.rows[0].data};
  delete item.email;delete item.phone;
  const photos=await pool.query('SELECT id,caption FROM ipz_tournament_photos WHERE tournament_id=$1 ORDER BY created_at DESC LIMIT 80',[id]);
- return {...item,photos:photos.rows.map(x=>({...x,url:'/api/tournaments/photo/'+x.id}))};
+ const coverId=photos.rows.find(x=>x.id===item.coverPhotoId)?.id||photos.rows[0]?.id||null;
+ delete item.coverPhotoId;
+ return {...item,coverUrl:coverId?'/api/tournaments/photo/'+coverId:null,photos:photos.rows.map(x=>({...x,url:'/api/tournaments/photo/'+x.id}))};
 }
 function cleanRanking(items, participants){
  if(!Array.isArray(items)||items.length>128)bad('Ranking inválido');
@@ -497,13 +507,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    const item=await publicTournament(tournamentDetail[1]);return item?json(res,200,{item}):error(res,404,'Torneio não encontrado');
   }
 
-  if(r==='/api/tournaments'&&m==='POST'){
-    limitCommunity(req);
-    const v=tournamentBody(await parse(req),false),id=ref('TOR');
-    const data={...v,organizer:v.name,status:'A aguardar aprovação',createdAt:new Date().toISOString(),draw:v.participants.length>=2?drawMatches(v.participants):[]};
-    await pool.query('INSERT INTO ipz_tournaments(id,data) VALUES($1,$2::jsonb)',[id,JSON.stringify(data)]);
-    return json(res,201,{id,status:data.status,draw:data.draw});
-  }
+  if(r==='/api/tournaments'&&m==='POST')return error(res,403,'A criação de torneios está disponível apenas nos painéis autorizados.');
   if(r==='/api/availability'&&m==='GET'){
    const date=u.searchParams.get('date')||'',court=u.searchParams.get('court')||'',start=u.searchParams.get('start')||'',end=u.searchParams.get('end')||'';
    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||(court&&!courts.includes(court)))return error(res,400,'Data ou campo inválido');
@@ -656,6 +660,15 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    requireAccess(s,'tournaments.view');const q=await pool.query('SELECT image FROM ipz_tournament_photos WHERE id=$1',[adminPhoto[1]]),uri=q.rows[0]?.image;if(!uri)return error(res,404,'Imagem não encontrada');
    const type=uri.slice(5,uri.indexOf(';')),bytes=Buffer.from(uri.split(',')[1],'base64');res.writeHead(200,{'Content-Type':type,'Content-Length':bytes.length,'Cache-Control':'private,no-store','X-Content-Type-Options':'nosniff'});return res.end(bytes);
   }
+  const coverRoute=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/cover$/);
+  if(coverRoute&&m==='PUT'){
+   requireAccess(s,'tournaments.edit');const b=await parse(req),photoId=cut(b.photoId,100);
+   if(!/^[A-Za-z0-9_-]+$/.test(photoId))return error(res,400,'Imagem de capa inválida');
+   const q=await pool.query(`UPDATE ipz_tournaments SET data=jsonb_set(data,'{coverPhotoId}',to_jsonb($2::text),true)
+     WHERE id=$1 AND EXISTS(SELECT 1 FROM ipz_tournament_photos WHERE id=$2 AND tournament_id=$1) RETURNING id`,[coverRoute[1],photoId]);
+   if(!q.rowCount)return error(res,404,'Fotografia não pertence ao torneio');
+   return json(res,200,{ok:true,coverPhotoId:photoId});
+  }
   const rankingRoute=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/ranking$/);
   if(rankingRoute&&m==='PUT'){
    requireAccess(s,'tournaments.edit');const id=rankingRoute[1],b=await parse(req);
@@ -666,8 +679,10 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   }
   const photosRoute=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/photos$/);
   if(photosRoute&&m==='GET'){
-   requireAccess(s,'tournaments.view');const q=await pool.query('SELECT id,caption FROM ipz_tournament_photos WHERE tournament_id=$1 ORDER BY created_at DESC',[photosRoute[1]]);
-   return json(res,200,{items:q.rows.map(x=>({...x,url:'/api/admin/tournaments/photo/'+x.id}))});
+   requireAccess(s,'tournaments.view');const q=await pool.query(`SELECT p.id,p.caption,(p.id=t.data->>'coverPhotoId') AS is_cover
+    FROM ipz_tournament_photos p JOIN ipz_tournaments t ON t.id=p.tournament_id
+    WHERE p.tournament_id=$1 ORDER BY p.created_at DESC`,[photosRoute[1]]);
+   return json(res,200,{items:q.rows.map(x=>({id:x.id,caption:x.caption,isCover:x.is_cover,url:'/api/admin/tournaments/photo/'+x.id}))});
   }
   if(photosRoute&&m==='POST'){
    requireAccess(s,'tournaments.edit');const b=await parse(req,400000),id=ref('TFOTO');
@@ -675,7 +690,11 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    const caption=cut(b.caption,160)||'Fotografia do torneio';
    const n=await pool.query('SELECT count(*)::int AS n FROM ipz_tournament_photos WHERE tournament_id=$1',[photosRoute[1]]);
    if(n.rows[0].n>=80)return error(res,409,'Limite de 80 fotografias por torneio');
-   await pool.query('INSERT INTO ipz_tournament_photos(id,tournament_id,caption,image) VALUES($1,$2,$3,$4)',[id,photosRoute[1],caption,galleryImage(b.image)]);
+   const newImage=galleryImage(b.image);
+   await tx(async db=>{
+     await db.query('INSERT INTO ipz_tournament_photos(id,tournament_id,caption,image) VALUES($1,$2,$3,$4)',[id,photosRoute[1],caption,newImage]);
+     if(b.asCover===true)await db.query("UPDATE ipz_tournaments SET data=jsonb_set(data,'{coverPhotoId}',to_jsonb($2::text),true) WHERE id=$1",[photosRoute[1],id]);
+   });
    return json(res,201,{ok:true,id});
   }
   const deletePhoto=r.match(/^\/api\/admin\/tournaments\/([A-Za-z0-9_-]+)\/photos\/([A-Za-z0-9_-]+)$/);
