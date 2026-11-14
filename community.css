@@ -63,3 +63,35 @@
 @keyframes ipz-tour-fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:650px){.ipz-tour-topnav{gap:12px}.ipz-tour-menu-links{width:100%;display:flex;gap:5px;overflow-x:auto}.ipz-tour-menu-links .ipz-tour-tab{padding:11px 12px;font-size:.78rem}.ipz-tour-panel .ipz-tour-photo-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ipz-tour-panel .ipz-tour-photo-featured{grid-column:1/-1}.ipz-tour-panel .ipz-participant-list{columns:1}}
 @media(prefers-reduced-motion:reduce){.ipz-tour-panel{animation:none}.ipz-tour-menu-links .ipz-tour-tab{transition:none}}
+
+/* V38 — Galeria editorial e capas dos torneios. Aplicação apenas ao website público. */
+#v-galeria .ipz-com-page,#v-torneios .ipz-com-page{max-width:1520px;margin-inline:auto}
+.ipz-editorial-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-flow:dense;grid-auto-rows:clamp(140px,14vw,230px);gap:10px}
+.ipz-editorial-photo{position:relative;overflow:hidden;margin:0;border-radius:17px;isolation:isolate;background:#172225;min-width:0;outline-offset:3px}
+.ipz-editorial-photo:nth-child(7n+1){grid-column:span 2;grid-row:span 2}
+.ipz-editorial-photo:nth-child(7n+4){grid-row:span 2}
+.ipz-editorial-photo:nth-child(7n+6){grid-column:span 2}
+.ipz-editorial-photo img{height:100%;width:100%;object-fit:cover;display:block;transition:transform .65s cubic-bezier(.2,.7,.2,1),filter .45s}
+.ipz-editorial-photo figcaption{position:absolute;inset:auto 0 0;padding:50px 22px 21px;color:#fff;font-size:clamp(.9rem,1.4vw,1.3rem);font-weight:750;line-height:1.2;letter-spacing:-.025em;background:linear-gradient(transparent,rgba(0,0,0,.8));opacity:0;transform:translateY(14px);transition:opacity .3s,transform .3s;pointer-events:none}
+.ipz-editorial-photo:hover figcaption,.ipz-editorial-photo:focus-visible figcaption{opacity:1;transform:translateY(0)}
+.ipz-editorial-photo:hover img,.ipz-editorial-photo:focus-visible img{transform:scale(1.055);filter:brightness(.92)}
+.ipz-tournament-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.ipz-tournament-card{overflow:hidden;border:1px solid color-mix(in srgb,currentColor 16%,transparent);border-radius:22px;background:color-mix(in srgb,var(--bg,#fff) 88%,transparent)}
+.ipz-tournament-cover{display:block;position:relative;aspect-ratio:16/10;overflow:hidden;background:#14211d}
+.ipz-tournament-cover img{width:100%;height:100%;object-fit:cover;transition:transform .5s}
+.ipz-tournament-card:hover .ipz-tournament-cover img{transform:scale(1.045)}
+.ipz-tournament-cover-fallback{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;background:linear-gradient(135deg,#1b2925,#0a1110);color:#cff902;gap:4px;text-align:center}
+.ipz-tournament-cover-fallback span{font-size:11px;letter-spacing:.22em;font-weight:750}
+.ipz-tournament-cover-fallback strong{font-size:clamp(38px,5vw,70px);letter-spacing:-.07em}
+.ipz-tournament-cover-fallback small{color:white;letter-spacing:.3em}
+.ipz-tournament-card-body{padding:23px}
+.ipz-tournament-card h3{font-size:clamp(1.35rem,2vw,1.75rem);margin:10px 0;line-height:1.12}
+.ipz-tournament-card p{margin:0 0 20px;opacity:.7}
+.ipz-tournament-separator{height:55px}
+.ipz-cover-choice{grid-column:1/-1!important;flex-direction:row!important;align-items:center;gap:10px!important}
+.ipz-cover-choice input{width:20px!important;accent-color:#cff902}
+.ipz-cover-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.ipz-cover-label{display:inline-block;margin:8px 0;padding:4px 9px;border-radius:99px;background:#cff902;color:#12221f;font-size:11px;font-weight:800}
+@media(max-width:780px){.ipz-editorial-gallery{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:155px}.ipz-editorial-photo:nth-child(n){grid-column:auto;grid-row:auto}.ipz-editorial-photo:nth-child(5n+1){grid-column:span 2;grid-row:span 2}.ipz-tournament-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.ipz-editorial-gallery{grid-auto-rows:120px;gap:7px}.ipz-editorial-photo{border-radius:12px}.ipz-editorial-photo figcaption{opacity:1;transform:none;padding:35px 12px 12px;font-size:12px}.ipz-tournament-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.ipz-editorial-photo img,.ipz-editorial-photo figcaption,.ipz-tournament-cover img{transition:none}}
