@@ -42,6 +42,11 @@ function hasAccess(session,key){return !!session&&(session.email===OWNER_EMAIL&&
 function requireAccess(session,key){if(!hasAccess(session,key))bad('Sem permissão para esta operação',403);}
 function hashPassword(password){const salt=crypto.randomBytes(16).toString('hex');const digest=crypto.scryptSync(password,salt,64).toString('hex');return salt+':'+digest;}
 function verifyPassword(password,hash){try{const [salt,encoded]=hash.split(':');const actual=crypto.scryptSync(String(password),salt,64);return crypto.timingSafeEqual(actual,Buffer.from(encoded,'hex'));}catch{return false;}}
+function validateStaffPassword(password){
+ const pw=String(password||'');
+ if(pw.length<8||pw.length>160||!/[A-Z]/.test(pw)||!/[0-9]/.test(pw))bad('A palavra-passe deve ter 8 a 160 caracteres, pelo menos uma letra maiúscula e um número');
+ return pw;
+}
 function validateStaffEmail(email){if(!/^[^\s@]{1,80}@[^\s@]{1,120}\.[^\s@]{2,}$/.test(email))bad('Email inválido');return email;}
 async function allPanels(){const q=await pool.query('SELECT id,name,permissions,protected FROM ipz_access_panels ORDER BY protected DESC,name');return q.rows;}
 async function sessionInfo(req){const raw=cookies(req);if(!/^[a-f0-9]{64}$/.test(raw))return null;
@@ -562,9 +567,17 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
   if(r==='/api/admin/panels'&&m==='POST'){
    requireAccess(s,'panels.manage');const b=await parse(req),name=cut(b.name,65),permissions=normalizePermissions(b.permissions);
    if(name.length<3||name.length>65||!permissions.length)bad('Indica nome e permissões válidas');
+   // Um painel novo nasce com uma conta real: criação atómica evita perfis sem login.
+   const username=cut(b.username,80),email=validateStaffEmail(cut(b.email,200).toLowerCase());
+   if(!username||username.length<2)bad('Indica o nome de utilizador (mínimo 2 caracteres)');
+   if(email===OWNER_EMAIL||email===RECEPTION_EMAIL)bad('Este email pertence a uma conta protegida',409);
+   const pw=validateStaffPassword(b.password);
    const id='panel_'+crypto.randomBytes(7).toString('hex');
-   await pool.query('INSERT INTO ipz_access_panels(id,name,permissions) VALUES($1,$2,$3::jsonb)',[id,name,JSON.stringify(permissions)]);
-   return json(res,201,{ok:true,id});
+   await tx(async db=>{
+    await db.query('INSERT INTO ipz_access_panels(id,name,permissions) VALUES($1,$2,$3::jsonb)',[id,name,JSON.stringify(permissions)]);
+    await db.query('INSERT INTO ipz_staff_users(email,name,password_hash,panels,active) VALUES($1,$2,$3,$4,true)',[email,username,hashPassword(pw),[id]]);
+   });
+   return json(res,201,{ok:true,id,email});
   }
   const panelRoute=r.match(/^\/api\/admin\/panels\/(panel_[a-f0-9]{14})$/);
   if(panelRoute){requireAccess(s,'panels.manage');const id=panelRoute[1];
@@ -587,7 +600,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
    if(email===RECEPTION_EMAIL){
     await pool.query('UPDATE ipz_staff_users SET name=$2,panels=$3,active=true WHERE email=$1',[email,name,panels]);
    }else{
-    if(pw.length<12||pw.length>160)bad('A palavra-passe deve ter entre 12 e 160 caracteres');
+    validateStaffPassword(pw);
     await pool.query('INSERT INTO ipz_staff_users(email,name,password_hash,panels) VALUES($1,$2,$3,$4)',[email,name,hashPassword(pw),panels]);
    }
    return json(res,201,{ok:true});
@@ -600,7 +613,7 @@ async function handler(req,res){const u=new URL(req.url,'http://localhost'),r=u.
     if(!name||!panels.length||panels.length>15)bad('Atribui pelo menos um painel');
     const found=await pool.query('SELECT id FROM ipz_access_panels WHERE id=ANY($1::text[])',[panels]);if(found.rows.length!==panels.length)bad('Painel inválido');
     if(email===RECEPTION_EMAIL&&(!panels.length||b.active===false))bad('Não podes desactivar a conta base da Recepção');
-    const pw=String(b.password||'');if(pw&&(pw.length<12||pw.length>160))bad('Palavra-passe demasiado curta');
+    const pw=String(b.password||'');if(pw)validateStaffPassword(pw);
     const q=await pool.query('UPDATE ipz_staff_users SET name=$2,panels=$3,active=$4,password_hash=CASE WHEN $5::text IS NULL THEN password_hash ELSE $5 END WHERE email=$1 RETURNING email',[email,name,panels,b.active!==false,pw?hashPassword(pw):null]);
     if(!q.rows.length)return error(res,404,'Utilizador não encontrado');
     await pool.query('DELETE FROM ipz_sessions WHERE email=$1',[email]);return json(res,200,{ok:true});
