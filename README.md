@@ -1,45 +1,26 @@
-# Indoor Padel Zone — V36 · Perfis circulares
+# Indoor Padel Zone V37 — Acessos individuais por painel
 
-## O que mudou
+## Alterações
+- **Adicionar painel** requer nome do painel, nome de utilizador, email, palavra-passe e permissões. A palavra-passe tem **mínimo 8 caracteres**, **uma letra maiúscula** e **um número**.
+- O painel e a conta de colaborador são criados **numa transacção PostgreSQL**, evitando registos incompletos.
+- O menu superior passa a mostrar apenas a **inicial do nome de utilizador**. O menu contém **Gerir painéis** (apenas Administrador principal) e **Terminar sessão**. Foi retirada a opção Trocar painel.
+- As novas contas usam hash **scrypt** e a autorização é verificada no servidor.
+- A gestão de colaboradores também aplica as mesmas regras de complexidade quando uma palavra-passe é criada ou alterada.
 
-A página **Gerir painéis** foi redesenhada com referência à selecção de perfis do Chrome, mas com a identidade da Indoor Padel Zone: tema claro, avatares circulares, botões arredondados e verde-lima `#CFF902`.
+## GitHub: substituir
+`server.js`, `script.js`, `admin-panels.js`, `admin-panels.css`, `index.html`, `tests.js`.
 
-- **Painéis / Colaboradores:** alternância entre perfis de permissões e contas individuais.
-- **Perfis circulares:** cada painel e colaborador aparece com avatar circular, nome e legenda.
-- **Selecção:** clicar num perfil mostra as permissões e colaboradores associados.
-- **Adicionar Perfil:** botão inferior esquerdo; adiciona um painel ou colaborador, conforme o separador activo.
-- **Editar Perfil:** botão inferior direito; activa/desactiva a edição dos perfis seleccionados.
-- **Editar / Apagar:** apenas painéis personalizados podem ser eliminados; as contas protegidas são mantidas.
-- **Permissões reais:** o servidor continua a validar acessos; não são apenas restrições visuais.
+## GitHub: adicionar
+`README-V37.md` (opcional).
 
-Não há alteração nas tabelas, endpoints, credenciais, fluxo de WhatsApp nem pagamentos. Os dados permanecem no Neon e os ficheiros mantêm-se na raiz do repositório.
+Todos os ficheiros continuam na raiz, tal como na V36. Neon e Render mantêm as variáveis existentes. Não há migração destrutiva.
 
-## Alterações no GitHub
+## Testar após deploy
+1. Iniciar sessão como Admin.
+2. Abrir Gerir painéis → Adicionar Perfil.
+3. Criar painel com nome, utilizador, email e senha válida (ex.: `Padel2026`).
+4. Terminar sessão e entrar com as novas credenciais. Confirmar visibilidade das secções permitidas.
+5. Tentar palavra-passe sem maiúscula ou número: o servidor deve rejeitar.
+6. Confirmar que no canto superior direito aparece apenas a inicial e que não existe Trocar painel.
 
-**Substituir:**
-- `admin-panels.js`
-- `admin-panels.css`
-- `index.html`
-- `tests.js`
-
-**Adicionar opcionalmente:** `README-V36.md`.
-
-Não substituir `server.js` ou outros ficheiros se já estiveres na V35 e não existirem diferenças na tua versão.
-
-## Render
-
-- Root Directory: vazio
-- Build: `npm install && npm run check`
-- Start: `npm start`
-
-## Testes de aceitação
-
-1. Entrar como Admin principal, abrir **Gerir painéis**.
-2. Confirmar avatares circulares e alternância Painéis / Colaboradores.
-3. Clicar em **Adicionar Perfil** e criar painel personalizado com permissões válidas.
-4. Activar **Editar Perfil**, seleccionar o painel criado, alterar permissões e guardar.
-5. Criar colaborador com palavra-passe de pelo menos 12 caracteres e atribuir um painel.
-6. Verificar que um colaborador sem permissão não acede a áreas não autorizadas.
-7. Apagar painel de teste e confirmar que a Administração principal não pode ser eliminada.
-
-Validação executada localmente: `npm run check`. A criação de perfis real depende de sessão Admin e ligação operacional ao Neon.
+**Nota:** A nova conta recebe o painel criado. Se precisares que o mesmo utilizador tenha vários painéis, o Admin pode editar as atribuições na aba Colaboradores. O selector foi removido do menu, portanto será necessário iniciar uma sessão associada ao primeiro painel atribuído ou desenvolver posteriormente um mecanismo autorizado para seleccionar outro painel.
