@@ -240,3 +240,21 @@ label.po{display:flex;gap:10px;align-items:center;border:1.5px solid #dde3e8;bor
 @media(max-width:580px){.ipz-footer{width:calc(100% - 20px);margin:32px auto 10px!important;padding:28px 23px!important;border-radius:22px!important}.ipz-footer__body{grid-template-columns:1fr;gap:30px}.ipz-footer__brand{grid-column:auto}.ipz-footer__heading{margin-bottom:14px}.ipz-footer__links nav{grid-template-columns:1fr 1fr;gap:14px 18px}.ipz-footer__bottom{align-items:flex-start;flex-direction:column}.ipz-footer__bottom-links{gap:20px}}
 @media(prefers-color-scheme:light){.ipz-footer{--foot-bg:#f1f4f3;--foot-text:#10232b;--foot-muted:#596c74;--foot-line:rgba(16,35,43,.18)}.ipz-footer__heading{color:#395007}.ipz-footer__links a:hover,.ipz-footer__contact a:not(.ipz-footer__cta):hover,.ipz-footer__bottom a:hover{color:#426000}}
 @media(prefers-reduced-motion:reduce){.ipz-footer a{transition:none!important}.ipz-footer__cta:hover{transform:none}}
+
+
+/* V40 — Corrige o espaço excessivo entre o conteúdo e o rodapé.
+   A página inicial tinha padding-bottom:90px na closing-panel, somado a
+   margin-top: até 92px no rodapé, criando um intervalo visual excessivo. */
+body:not(.adm) .view.on > section:last-child {
+  padding-bottom:clamp(14px,2vw,26px)!important;
+}
+body:not(.adm) .view.on .closing-panel {
+  padding-bottom:clamp(14px,2vw,26px)!important;
+}
+body:not(.adm) .ipz-footer {
+  margin-top:clamp(14px,2vw,28px)!important;
+}
+@media(max-width:580px){
+  body:not(.adm) .view.on > section:last-child {padding-bottom:12px!important}
+  body:not(.adm) .ipz-footer {margin-top:16px!important}
+}
