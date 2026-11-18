@@ -1,0 +1,21 @@
+/* Indoor Padel Zone V43 · iconografia geométrica bicolor */
+:root{--ipz-icon-base:#FFFFFF;--ipz-icon-accent:#CFF902}
+@media(prefers-color-scheme:light){:root{--ipz-icon-base:#15272E;--ipz-icon-accent:#8BA800}}
+.ipz-symbol{display:inline-block;width:1.18em;height:1.18em;vertical-align:-.16em;flex-shrink:0;overflow:visible;transition:transform .22s ease,filter .22s ease}
+.ipz-inline-icon{display:inline-flex;align-items:center;justify-content:center;margin-inline:.2em;vertical-align:middle;line-height:1}
+.ipz-inline-icon .ipz-symbol{width:1em;height:1em}
+:is(a,button):hover .ipz-symbol{transform:translate(1px,-1px)}
+/* No painel claro os traços brancos tornam-se escuros para assegurar contraste. */
+.adm{--ipz-icon-base:#233B3B;--ipz-icon-accent:#93B300}
+.adm .nl i:has(.ipz-symbol),.adm .ka:has(.ipz-symbol){background:none!important;opacity:1!important;border-radius:0!important}
+.adm .nl i .ipz-symbol{width:20px;height:20px}
+.adm .nl i{width:20px;height:20px}
+.adm .ka .ipz-symbol{width:16px;height:16px}
+.adm .nl.on{--ipz-icon-base:#14261E;--ipz-icon-accent:#7F9D00}
+.adm .ad-logout{--ipz-icon-base:#111C15;--ipz-icon-accent:#4C6300}
+/* Nos botões lima, utilizar uma combinação escura em vez de branco sobre verde claro. */
+:is(.ipz-footer__contact-chip-icon,.ipz-footer__cta a,.ipz-footer__contact-chip, .lime-btn):has(.ipz-symbol){--ipz-icon-base:#102019;--ipz-icon-accent:#557000}
+.ipz-footer__contact-chip-arrow .ipz-symbol{width:18px;height:18px}
+/* O ícone WhatsApp mantém semântica e leitura em ambos os temas. */
+.ipz-footer__contact-chip-icon .ipz-symbol{width:21px;height:21px}
+@media(prefers-reduced-motion:reduce){.ipz-symbol{transition:none!important}}
