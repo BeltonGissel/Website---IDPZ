@@ -319,3 +319,35 @@ body.adm .ipz-footer{display:none!important}
 .ipz-footer{margin:clamp(24px,3.5vw,52px) auto 18px!important}
 .ipz-footer__contact-chip-icon svg{display:block;width:21px;height:21px;flex-shrink:0}
 @media(max-width:700px){.ipz-footer{margin:26px auto 12px!important}}
+
+/* V45 — Etiqueta da Nossa Loja: contraste e legibilidade em ambos os temas.
+   Limitar ao bloco da loja para não afectar reservas, badges ou o Admin. */
+body:not(.adm) #v-loja section > .dm {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 36px;
+  padding: 9px 15px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(12, 28, 17, .12);
+  border-radius: 999px;
+  background: #CFF902;
+  color: #102019 !important;
+  font-size: clamp(.73rem, .85vw, .82rem);
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .10);
+}
+@media (max-width: 600px) {
+  body:not(.adm) #v-loja section > .dm {
+    min-height: 36px;
+    padding: 9px 12px;
+    font-size: .71rem;
+    margin-bottom: 16px;
+  }
+}
