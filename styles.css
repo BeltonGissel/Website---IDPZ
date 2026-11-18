@@ -315,10 +315,7 @@ label.po{display:flex;gap:10px;align-items:center;border:1.5px solid #dde3e8;bor
 /* Garantir que a navegacao e o rodape nao invadem as vistas administrativas. */
 body.adm .ipz-footer{display:none!important}
 
-/* V42: Mantém o CTA fotográfico original da página e remove o segundo CTA do footer. */
-.ipz-footer { margin: 26px auto 18px!important; overflow: hidden!important; }
-.ipz-footer__main { border-radius: 34px!important; }
-@media (max-width:700px) {
-  .ipz-footer { margin-top:20px!important; }
-  .ipz-footer__main { border-radius:25px!important; }
-}
+/* V42: rodapé sem banner duplicado, mantendo o CTA da secção acima. */
+.ipz-footer{margin:clamp(24px,3.5vw,52px) auto 18px!important}
+.ipz-footer__contact-chip-icon svg{display:block;width:21px;height:21px;flex-shrink:0}
+@media(max-width:700px){.ipz-footer{margin:26px auto 12px!important}}
