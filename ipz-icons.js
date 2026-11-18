@@ -36,28 +36,29 @@
   return '<svg class="ipz-symbol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false" '+extra+'><g stroke="'+light+'" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round">'+parts[0]+'</g><g stroke="'+lime+'" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">'+parts[1]+'</g></svg>';
  }
  window.IPZIcons={svg};
- const glyphs={'↗':'arrow-up-right','→':'arrow-right','↑':'arrow-up','↓':'arrow-down','+':'plus','−':'minus'};
- // Apenas substitui ícones isolados. Não modifica textos longos, labels nem conteúdo editável.
+ // V44: renderizar apenas ícones explicitamente marcados.
+ // Não alterar nós de texto, botões, setas, formulários ou a estrutura do layout.
  function decorate(root){
-  if(!root||root.nodeType!==1)return;
-  if(root.matches('[data-ipz-icon]')&&!root.dataset.ipzReady){root.innerHTML=svg(root.dataset.ipzIcon);root.dataset.ipzReady='1';}
-  root.querySelectorAll('[data-ipz-icon]:not([data-ipz-ready])').forEach(n=>{n.innerHTML=svg(n.dataset.ipzIcon);n.dataset.ipzReady='1';});
-  const walk=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
-  const target=[];
-  while(walk.nextNode()){
-   const t=walk.currentNode, v=t.nodeValue.trim();
-   if(!t.parentElement||t.parentElement.closest('script,style,textarea,select,option,[contenteditable],.adm'))continue;
-   const trailing=v.match(/^(.{1,65}?)\s*([↗→↑↓])$/u);
-   if(!glyphs[v]&&!trailing)continue;
-   if(t.parentElement.closest('.ipz-symbol'))continue;
-   if(v==='+'&&!(t.parentElement.closest('button,a,.faq-q,.qty,.cart')))continue;
-   if(trailing&&!t.parentElement.closest('a,button'))continue;
-   target.push([t,v,trailing]);
-  }
-  target.forEach(([node,v,trailing])=>{const shell=document.createElement('span');shell.className='ipz-inline-icon';shell.innerHTML=svg(glyphs[trailing?trailing[2]:v]);if(trailing){const frag=document.createDocumentFragment();frag.appendChild(document.createTextNode(trailing[1].trimEnd()+' '));frag.appendChild(shell);node.parentNode.replaceChild(frag,node);}else node.parentNode.replaceChild(shell,node);});
+   if(!root || root.nodeType!==1)return;
+   const nodes=[];
+   if(root.matches('[data-ipz-icon]:not([data-ipz-ready])'))nodes.push(root);
+   root.querySelectorAll('[data-ipz-icon]:not([data-ipz-ready])').forEach(node=>nodes.push(node));
+   nodes.forEach(node=>{
+     const name=node.getAttribute('data-ipz-icon');
+     if(!Object.prototype.hasOwnProperty.call(shapes,map[name]||name))return;
+     node.innerHTML=svg(name);
+     node.setAttribute('data-ipz-ready','1');
+   });
  }
- let scheduled=false;
- const rerender=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;decorate(document.body);});};
- function init(){decorate(document.body);new MutationObserver(rerender).observe(document.body,{childList:true,subtree:true});}
+ function init(){
+   decorate(document.body);
+   // Novos fragmentos gerados pela navegação SPA também recebem os ícones explícitos.
+   const observer=new MutationObserver(records=>{
+     records.forEach(record=>record.addedNodes.forEach(node=>{
+       if(node.nodeType===1)decorate(node);
+     }));
+   });
+   observer.observe(document.body,{childList:true,subtree:true});
+ }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
