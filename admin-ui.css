@@ -1,349 +1,100 @@
-/* Indoor Padel Zone — Admin UI V16. Aplicado APENAS à área de gestão. */
-.adm .ad-wrap{grid-template-columns:minmax(220px,245px) minmax(0,1fr);gap:14px;align-items:stretch}
-.adm .ad-sb{position:sticky;top:14px;align-self:start;height:calc(100dvh - 28px);min-height:640px;overflow-y:auto;padding:20px 15px 16px;gap:3px;scrollbar-width:thin}
-.adm .ad-sb>a:first-child{display:inline-flex;align-items:center;min-height:56px;margin:0 8px 8px}
-.adm .ad-sb>a:first-child img{height:51px;max-width:145px;object-fit:contain;margin:0}
-.adm .ad-mn{margin:18px 12px 7px;font-size:.68rem;letter-spacing:.12em;font-weight:700}
-.adm .ad-sb .nl{min-height:46px;padding:11px 13px;gap:12px;border-radius:12px;font-size:.89rem;line-height:1.25;font-weight:550;transition:background .2s ease,color .2s ease,transform .2s ease}
-.adm .ad-sb .nl:hover{background:rgba(16,120,77,.07);transform:translateX(2px)}
-.adm .ad-sb .nl.on{background:rgba(18,112,76,.085);color:#126044;font-weight:700}
-.adm .ad-sb .nl.on::before{left:-15px;top:9px;bottom:9px;width:4px}
-.adm .ad-sb .nl i{display:grid;place-items:center;flex:0 0 20px;width:20px;height:20px;border:0;background:none!important;border-radius:0;opacity:1;color:#85929a;font-style:normal}
-.adm .ad-sb .nl.on i{color:#126044}
-.adm .ad-sb .nl i svg{display:block;width:19px;height:19px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.adm .ad-sidebar-spacer{flex:1;min-height:22px}
-.adm .ad-sb .ad-logout{display:flex;justify-content:flex-start;align-items:center;flex-shrink:0;width:100%;min-height:48px;margin-top:14px;border:1px solid #bddc00!important;background:#cff902!important;color:#111e14!important;font-weight:750!important;text-align:left;cursor:pointer;box-shadow:0 7px 20px rgba(169,205,0,.16)}
-.adm .ad-sb .ad-logout i{color:#111e14!important}
-.adm .ad-sb .ad-logout:hover{background:#bce600!important;transform:translateY(-2px)}
-.adm .ad-sb .ad-logout:focus-visible,.adm .ad-sb .nl:focus-visible,.adm .ad-main button:focus-visible{outline:3px solid #aecf00;outline-offset:3px}
-.adm .ad-pg{padding:clamp(16px,2.1vw,30px)}
-.adm .ah{gap:16px;margin-bottom:22px}
-.adm .ah h1{line-height:1.13;font-size:clamp(1.7rem,2.4vw,2.25rem)}
-.adm .ah>div:last-child{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.adm .btn{min-height:43px;display:inline-flex;gap:8px;align-items:center;justify-content:center;border-radius:999px;padding:10px 18px!important;font-size:.83rem;line-height:1.25;font-weight:700;white-space:normal;transition:transform .2s ease,background .2s ease,box-shadow .2s ease}
-.adm .btn:hover{transform:translateY(-2px)}
-.adm .btn.bo{border-width:1.5px}
-.adm .dg{gap:12px}
-.adm .kp{position:relative;overflow:hidden;border-radius:20px;padding:clamp(16px,1.4vw,23px);min-width:0}
-.adm .kt{font-size:clamp(.85rem,1.05vw,.97rem);line-height:1.3;gap:8px}
-.adm .kn{font-size:clamp(2rem,3.25vw,3.1rem);line-height:1.12;min-height:1.15em;letter-spacing:-.05em;font-weight:700;font-variant-numeric:tabular-nums}
-.adm .kp small{line-height:1.5}
-.adm .ka{width:34px;height:34px;min-width:34px;border-width:1.5px;border-radius:50%;display:grid;place-items:center;transition:transform .2s ease,background .2s ease}
-.adm .ka:hover{transform:translate(2px,-2px);background:rgba(3,37,28,.06)}
-.adm .ka svg{width:17px;height:17px;display:block;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.adm .k1 .ka{color:white;border-color:rgba(255,255,255,.55)}
-.adm .kp .li{min-width:0;gap:10px}
-.adm .kp .li>span{min-width:0;overflow-wrap:anywhere}
-.adm .ad-top{gap:15px;min-height:66px}
-.adm .ad-top input{min-width:0}
-/* Efeito de entrada apenas na primeira montagem, controlado pelo admin-ui.js. */
-.adm .ad-sb.is-entering .nl{animation:ipzNavRise .42s both;animation-delay:calc(var(--item-order,0)*45ms)}
-.adm .ad-pg.is-entering .kp{animation:ipzCardRise .64s cubic-bezier(.2,.72,.25,1) both;animation-delay:calc(var(--item-order,0)*62ms)}
-.adm .ad-pg.is-entering .ah{animation:ipzCardRise .5s both}
-.adm .ad-pg.is-entering .ka svg{animation:ipzIconRise .55s both;animation-delay:calc(var(--item-order,0)*62ms)}
-.adm .ad-pg.is-entering .bb:not(.hz){transform-origin:bottom;animation:ipzBarGrow .75s cubic-bezier(.25,.7,.2,1) both;animation-delay:calc(var(--item-order,0)*65ms)}
-@keyframes ipzNavRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-@keyframes ipzCardRise{from{opacity:0;transform:translateY(22px);filter:blur(4px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
-@keyframes ipzIconRise{from{opacity:0;transform:translateY(8px) scale(.82)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes ipzBarGrow{from{transform:scaleY(.1)}to{transform:scaleY(1)}}
-@media(max-width:1100px){.adm .ad-wrap{grid-template-columns:minmax(205px,225px) minmax(0,1fr)}.adm .dg{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:980px){.adm .ad-wrap{grid-template-columns:1fr}.adm .ad-sb{position:static;min-height:0;height:auto;overflow:visible}.adm .ad-sidebar-spacer{display:none}.adm .ad-sb .ad-logout{margin-top:16px}.adm .dg{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.adm .ad-wrap{padding:7px}.adm .ad-pg{padding:16px}.adm .dg{grid-template-columns:1fr}.adm .dg .span2{grid-column:auto}.adm .ah>div:last-child{width:100%}.adm .ah .btn{flex:1}.adm .ad-sb .nl{min-height:43px}}
-@media(prefers-color-scheme:dark){.adm .ad-sb .ad-logout{background:#cff902!important;color:#0c180e!important}}
-@media(prefers-reduced-motion:reduce){.adm .ad-sb .nl,.adm .btn,.adm .ka,.adm .ad-pg.is-entering .kp,.adm .ad-pg.is-entering .ah,.adm .ad-pg.is-entering .ka svg,.adm .ad-pg.is-entering .bb,.adm .ad-sb.is-entering .nl{animation:none!important;transition:none!important;filter:none!important;transform:none!important}}
+/* V36 · Gestão de perfis — disposição inspirada num selector de perfis,
+   adaptada à identidade Indoor Padel Zone. Apenas dentro do Admin. */
+.adm .ipz-user-wrap {position:relative;z-index:30}
+.adm .ipz-profile-trigger{display:flex;align-items:center;gap:12px;background:transparent;cursor:pointer;border:1px solid transparent;border-radius:18px;padding:9px 12px;font:inherit;color:#10232b;text-align:left}
+.adm .ipz-profile-trigger:hover,.adm .ipz-profile-trigger:focus-visible{background:#e9eeee;border-color:#c5d3d4;outline:none}
+.adm .ipz-profile-trigger>i{width:42px;height:42px;flex:none;border-radius:50%;background:#cff902;display:grid;place-items:center;font-style:normal;font-weight:800;color:#10232b}
+.adm .ipz-profile-trigger b{font-size:13px;display:block;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.adm .ipz-profile-trigger small{font-size:11px;display:block;color:#64717a;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.adm .ipz-profile-popover{position:absolute;z-index:90;right:0;top:calc(100% + 10px);min-width:245px;background:#fff;border:1px solid #d8e2e3;border-radius:18px;box-shadow:0 22px 58px #10232b27;padding:10px}
+.adm .ipz-profile-popover[hidden]{display:none}
+.adm .ipz-profile-label{font-size:11px;text-transform:uppercase;letter-spacing:.055em;padding:10px 12px 5px;color:#667781;font-weight:800}
+.adm .ipz-profile-item{box-sizing:border-box;display:block;width:100%;border:0;background:none;color:#10232b;text-align:left;border-radius:11px;padding:12px;font:inherit;font-size:13px;text-decoration:none;cursor:pointer}
+.adm .ipz-profile-item:hover,.adm .ipz-profile-item:focus-visible{background:#f3f8e5;outline:none}
+.adm .ipz-profile-item.active{background:#cff902;font-weight:800}
+.adm .ipz-profile-exit{margin-top:8px;border-top:1px solid #edf0f0;color:#7a3434}
+.adm .ipz-manager{--ipz-lime:#cff902;--ipz-ink:#10232b;--ipz-muted:#697981;--ipz-border:#dce5e6;color:var(--ipz-ink);width:100%;max-width:1260px;box-sizing:border-box}
+.adm .ipz-manager *{box-sizing:border-box}
+.adm .ipz-manager-head{margin:0 0 25px}
+.adm .ipz-eyebrow{color:#708007;font-size:11px;font-weight:850;letter-spacing:.13em}
+.adm .ipz-manager-head h1{font-size:clamp(28px,3.4vw,44px);letter-spacing:-.048em;line-height:1.14;margin:10px 0 6px;color:var(--ipz-ink)}
+.adm .ipz-manager-head p{color:var(--ipz-muted);font-size:14px;margin:0}
+.adm .ipz-profile-shell{background:#fff;border:1px solid #e4eaeb;box-shadow:0 15px 60px #142c3010;border-radius:30px;padding:clamp(22px,3.5vw,44px);min-height:620px}
+.adm .ipz-profile-shell-top{text-align:center;display:flex;align-items:center;flex-direction:column;gap:9px}
+.adm .ipz-profile-symbol{display:grid;place-items:center;width:54px;height:54px;border-radius:18px;background:#cff902;color:#10232b;font-size:27px;font-weight:800}
+.adm .ipz-shell-caption{font-size:clamp(19px,2vw,27px);font-weight:750;letter-spacing:-.04em;margin:5px 0 6px}
+.adm .ipz-selector-tabs{display:inline-flex;align-items:center;gap:5px;padding:5px;background:#f2f5f5;border-radius:100px;border:1px solid #e5ecec}
+.adm .ipz-selector-tabs button{border:0;border-radius:100px;padding:9px 19px;color:#53656e;background:transparent;cursor:pointer;font:inherit;font-size:13px;font-weight:750;transition:.2s}
+.adm .ipz-selector-tabs button.active{background:#cff902;color:#10232b;box-shadow:0 2px 8px #bccd2a33}
+.adm .ipz-profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));max-width:880px;margin:34px auto 22px;gap:14px;justify-items:center;align-items:start}
+.adm .ipz-circle-profile{position:relative;width:100%;max-width:185px;min-height:185px;padding:15px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;background:#f8faf9;border:1px solid #e4ebeb;border-radius:21px;cursor:pointer;color:#10232b;font:inherit;transition:transform .23s ease,background .23s ease,box-shadow .23s ease,border-color .23s ease;text-align:center}
+.adm .ipz-circle-profile:hover,.adm .ipz-circle-profile:focus-visible{background:#f2f8de;border-color:#b7d445;transform:translateY(-4px);box-shadow:0 8px 20px #112a2d15;outline:0}
+.adm .ipz-circle-profile.is-selected{border:2px solid #b6dd00;background:#f8fde8;box-shadow:0 0 0 3px #cff90220}
+.adm .ipz-circle-avatar{position:relative;display:grid;place-items:center;flex:none;width:83px;height:83px;aspect-ratio:1;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1px #d5dfdf,0 5px 15px #0e28241e;color:#132a2f;background:#dceee6;font-weight:850;font-size:27px;letter-spacing:-.04em}
+.adm .ipz-tone-0{background:linear-gradient(135deg,#cdf900,#a4d107)}
+.adm .ipz-tone-1{background:linear-gradient(135deg,#c9eae2,#95cbbe)}
+.adm .ipz-tone-2{background:linear-gradient(135deg,#e9e5fb,#b9b0dc)}
+.adm .ipz-tone-3{background:linear-gradient(135deg,#fdecc6,#dfcc99)}
+.adm .ipz-tone-4{background:linear-gradient(135deg,#d6e3f6,#adc8ea)}
+.adm .ipz-circle-profile.is-selected .ipz-circle-avatar{box-shadow:0 0 0 3px #cff902,0 7px 17px #142f2822}
+.adm .ipz-circle-name{font-size:14px;font-weight:800;line-height:1.23;overflow-wrap:anywhere;max-width:165px}
+.adm .ipz-circle-profile small{color:#697b80;font-size:11px;line-height:1.35;max-width:165px}
+.adm .ipz-circle-pencil{position:absolute;top:11px;right:12px;color:#6c7b42;font-size:15px}
+.adm .ipz-profile-noitems{color:#65777c;grid-column:1/-1}
+.adm .ipz-selected-profile{margin:20px auto 26px;max-width:880px;padding:22px;border:1px solid #e1e8e9;border-radius:22px;background:#fafcfb;min-height:128px}
+.adm .ipz-selected-header{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.adm .ipz-selected-header h3{font-size:21px;letter-spacing:-.03em;margin:5px 0 2px;color:#10232b}
+.adm .ipz-selected-header p{margin:0;color:#697981;font-size:13px;overflow-wrap:anywhere}
+.adm .ipz-access-pill{border-radius:100px;padding:7px 11px;background:#edf4d8;color:#53600d;font-size:11px;font-weight:800;white-space:nowrap}
+.adm .ipz-permission-tags{display:flex;flex-wrap:wrap;gap:7px;margin:15px 0 0}
+.adm .ipz-permission-tags span{background:#edf2f2;color:#40525c;border-radius:100px;padding:7px 10px;font-size:11px;font-weight:650}
+.adm .ipz-linked-people{font-size:13px;color:#566a74;margin:15px 0 0}
+.adm .ipz-detail-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:19px}
+.adm .ipz-profile-empty{color:#687981;text-align:center;padding:30px 8px;font-size:14px}
+.adm .ipz-profile-empty span{display:block;font-size:28px;margin-bottom:10px}
+.adm .ipz-profile-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;border-top:1px solid #e6ecec;padding-top:25px}
+.adm .ipz-manager-primary,.adm .ipz-manager-outline,.adm .ipz-manager-danger{font:inherit;font-size:13px;font-weight:800;cursor:pointer;min-height:45px;padding:11px 20px;border-radius:100px;transition:transform .2s,background .2s}
+.adm .ipz-manager-primary{color:#10232b;background:#cff902;border:1px solid #cff902}
+.adm .ipz-manager-primary:hover,.adm .ipz-manager-primary:focus-visible{background:#bcea00;transform:translateY(-1px)}
+.adm .ipz-manager-outline{color:#10232b;background:white;border:1px solid #b8cbd0}
+.adm .ipz-manager-outline:hover,.adm .ipz-manager-outline:focus-visible{border-color:#9cbd00;background:#f8fde8}
+.adm .ipz-manager-danger{color:#9d3131;background:#fff;border:1px solid #efcbcb}
+.adm .ipz-manager-danger:hover{background:#fff2f2}
+.adm .ipz-manager-primary:disabled{opacity:.55;cursor:wait}
+.adm .ipz-bottom-action{display:inline-flex;align-items:center;gap:10px}
+.adm .ipz-bottom-action-icon{font-size:18px;line-height:1}
+.adm .ipz-bottom-action.is-active{background:#b8e500}
+.adm .ipz-manager-feedback{margin:12px 2px;color:#526f16;font-size:13px}
+.adm .ipz-manager-loading{padding:32px;color:#697981}
+.adm .ipz-modal-backdrop{position:fixed;inset:0;z-index:400;display:grid;place-items:center;padding:20px;background:#071216a8;backdrop-filter:blur(6px)}
+.adm .ipz-profile-dialog{width:min(840px,100%);max-height:min(90vh,850px);overflow-y:auto;overscroll-behavior:contain;border:1px solid #dfe9e9;border-radius:24px;background:#fff;color:#10232b;box-shadow:0 25px 90px #05161988;padding:clamp(20px,3vw,32px)}
+.adm .ipz-profile-dialog-head{display:flex;justify-content:space-between;align-items:start;gap:15px;margin-bottom:20px}
+.adm .ipz-profile-dialog-head h2{font-size:26px;letter-spacing:-.035em;margin:8px 0 0}
+.adm .ipz-dialog-close{background:#eff3f3;border:0;color:#10232b;border-radius:100%;width:36px;height:36px;font-size:24px;line-height:1;cursor:pointer}
+.adm .ipz-dialog-instruction{font-size:13px;color:#5b6c76;margin:18px 0 8px}
+.adm .ipz-manager-field{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:750;color:#344952;margin:10px 0}
+.adm .ipz-manager-field input{font:inherit;min-height:47px;width:100%;background:#fff;color:#10232b;border:1px solid #d0dee0;border-radius:13px;padding:12px 14px;outline-offset:2px}
+.adm .ipz-manager-field input:focus-visible{outline:2px solid #cff902;border-color:#b5da00}
+.adm .ipz-manager-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.adm .ipz-permissions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin:10px 0 23px}
+.adm .ipz-permissions{min-width:0;background:#fafcfa;border:1px solid #e0e8e8;border-radius:15px;padding:13px}
+.adm .ipz-permissions legend{font-size:12px;font-weight:850;padding:0 6px}
+.adm .ipz-panel-check{display:flex;align-items:center;gap:9px;margin:9px 0;cursor:pointer;font-size:12px;color:#364b55}
+.adm .ipz-panel-check input{appearance:auto;accent-color:#b9e800;flex:none;width:17px;height:17px}
+.adm .ipz-panel-checks{display:flex;flex-wrap:wrap;gap:8px 15px;background:#f4f7f7;border-radius:15px;padding:14px}
+.adm .ipz-form-status{color:#a33c3c;font-size:13px;min-height:15px}
+.adm .ipz-manager-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:15px}
+.adm .ipz-manager [hidden],.adm .ipz-modal-backdrop[hidden]{display:none!important}
+@media(max-width:850px){.adm .ipz-profile-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{max-width:105px}}
+@media(max-width:620px){.adm .ipz-profile-shell{padding:20px 13px;border-radius:20px}.adm .ipz-profile-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.adm .ipz-circle-profile{max-width:none;min-height:169px;padding:12px 6px}.adm .ipz-circle-avatar{width:70px;height:70px;font-size:23px}.adm .ipz-permissions-grid,.adm .ipz-manager-fields{grid-template-columns:1fr}.adm .ipz-selected-header{align-items:flex-start;flex-direction:column}.adm .ipz-profile-toolbar{flex-direction:column;align-items:stretch}.adm .ipz-bottom-action{justify-content:center}.adm .ipz-profile-trigger b,.adm .ipz-profile-trigger small{display:none}}
+@media(prefers-reduced-motion:reduce){.adm .ipz-circle-profile,.adm .ipz-manager-primary,.adm .ipz-manager-outline{transition:none}.adm .ipz-circle-profile:hover{transform:none}}
 
-
-/* V29 — Harmonização das abas do Admin.
-   Escopo estrito: o site público mantém os seus temas claro/escuro.
-   A área administrativa utiliza o tema claro institucional em todos os sistemas. */
-body.adm {
-  --ipz-admin-ink: #12212b;
-  --ipz-admin-muted: #647581;
-  --ipz-admin-border: #dfe7e8;
-  --ipz-admin-field: #ffffff;
-  --ipz-admin-surface: #ffffff;
-  --ipz-admin-subtle: #f6f8f7;
-  --ipz-admin-lime: #cff902;
-  color-scheme: light;
-}
-.adm .ad-pg,
-.adm #ipz-community-admin {
-  color: var(--ipz-admin-ink);
-}
-.adm #ipz-community-admin {
-  width: 100%;
-  min-width: 0;
-}
-.adm #ipz-community-admin > h2,
-.adm #ipz-community-admin > p {
-  color: var(--ipz-admin-ink);
-}
-.adm #ipz-community-admin > h2 {
-  font-size: clamp(1.75rem, 2.6vw, 2.5rem);
-  font-weight: 750;
-  letter-spacing: -.045em;
-  line-height: 1.12;
-  margin: 0 0 10px;
-}
-.adm #ipz-community-admin > p {
-  font-size: .95rem;
-  color: var(--ipz-admin-muted);
-  margin: 0 0 24px;
-  line-height: 1.5;
-}
-/* Formulários de galeria, criação de torneios e edição de resultados. */
-.adm #ipz-community-admin .ipz-com-form {
-  background: var(--ipz-admin-surface) !important;
-  color: var(--ipz-admin-ink) !important;
-  border: 1px solid var(--ipz-admin-border) !important;
-  border-radius: 21px;
-  padding: clamp(20px, 2.4vw, 30px);
-  box-shadow: 0 8px 30px rgba(20,45,48,.035);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  column-gap: 18px;
-  row-gap: 20px;
-}
-.adm #ipz-community-admin .ipz-com-form label,
-.adm #ipz-community-admin .ipz-admin-label,
-.adm #ipz-community-admin .ipz-tournament-photo-form label {
-  color: var(--ipz-admin-ink) !important;
-  font-weight: 650;
-  font-size: .87rem;
-  line-height: 1.4;
-}
-.adm #ipz-community-admin input:not([type="checkbox"]):not([type="radio"]),
-.adm #ipz-community-admin select,
-.adm #ipz-community-admin textarea {
-  min-width: 0;
-  width: 100%;
-  min-height: 47px;
-  padding: 11px 14px;
-  border: 1px solid #cbd7da !important;
-  border-radius: 12px;
-  background: var(--ipz-admin-field) !important;
-  color: var(--ipz-admin-ink) !important;
-  font: inherit;
-  font-size: .93rem;
-  box-shadow: none;
-  opacity: 1;
-  color-scheme: light;
-}
-.adm #ipz-community-admin textarea {
-  min-height: 114px;
-  resize: vertical;
-  line-height: 1.5;
-}
-.adm #ipz-community-admin input::placeholder,
-.adm #ipz-community-admin textarea::placeholder {
-  color: #829198 !important;
-  opacity: 1;
-}
-.adm #ipz-community-admin input[type="file"] {
-  padding: 9px 10px;
-  font-size: .82rem;
-  min-height: 49px;
-}
-.adm #ipz-community-admin input[type="file"]::file-selector-button {
-  background: #eaf0ed;
-  color: #193c31;
-  border: 0;
-  border-radius: 9px;
-  padding: 8px 12px;
-  margin-right: 12px;
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-.adm #ipz-community-admin :is(input,textarea,select,button,summary):focus-visible {
-  outline: 3px solid rgba(139,176,0,.5);
-  outline-offset: 2px;
-}
-/* Botões iguais aos de outras abas, com estados coerentes. */
-.adm #ipz-community-admin :is(.ipz-com-btn,button:not(.danger)) {
-  appearance: none;
-  border: 1px solid transparent;
-  background: var(--ipz-admin-lime);
-  color: #152018;
-  font-family: inherit;
-  font-size: .84rem;
-  line-height: 1.3;
-  font-weight: 750;
-  padding: 11px 19px;
-  border-radius: 999px;
-  min-height: 43px;
-  cursor: pointer;
-  transition: background .18s ease, transform .18s ease;
-}
-.adm #ipz-community-admin :is(.ipz-com-btn,button:not(.danger)):hover {
-  background: #bbe600;
-  transform: translateY(-1px);
-}
-.adm #ipz-community-admin :is(.ipz-com-btn,button):disabled { opacity: .55;cursor: not-allowed;transform: none; }
-.adm #ipz-community-admin button.danger {
-  appearance: none;
-  background: #fff1f1;
-  color: #a82d39;
-  border: 1px solid #f1cacf;
-  border-radius: 999px;
-  padding: 11px 18px;
-  min-height: 43px;
-  font: inherit;
-  font-size: .84rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-.adm #ipz-community-admin button.danger:hover { background: #ffe0e0; }
-/* Cartões da galeria e lista de torneios, incluindo subformulários. */
-.adm #ipz-community-admin .ipz-com-grid { gap: 16px; }
-.adm #ipz-community-admin .ipz-com-card,
-.adm #ipz-community-admin .ipz-tournament-management {
-  color: var(--ipz-admin-ink);
-  background: var(--ipz-admin-surface) !important;
-  border: 1px solid var(--ipz-admin-border);
-  box-shadow: 0 6px 22px rgba(20,45,48,.035);
-}
-.adm #ipz-community-admin .ipz-com-card { border-radius: 18px; }
-.adm #ipz-community-admin .ipz-com-card .ipz-pad { padding: 18px; }
-.adm #ipz-community-admin .ipz-com-card p,
-.adm #ipz-community-admin .ipz-com-meta { color: var(--ipz-admin-muted);opacity: 1; }
-.adm #ipz-community-admin .ipz-com-card img { background: #eef2f3; }
-.adm #ipz-community-admin .ipz-tournament-management {
-  border-radius: 14px;
-  margin: 15px 0;
-  padding: 15px;
-}
-.adm #ipz-community-admin details > summary { color: #165c48;cursor:pointer;font-weight:700; }
-.adm #ipz-community-admin :is(.ipz-match,.ipz-com-notice) {
-  background: var(--ipz-admin-subtle);
-  color: var(--ipz-admin-ink);
-  border: 1px solid var(--ipz-admin-border);
-  border-radius: 12px;
-}
-.adm #ipz-community-admin [role="status"] { color: #126044;line-height: 1.45; }
-/* Relatórios: nenhum cartão escuro no Admin, independentemente do tema do sistema. */
-.adm .ipz-report-info {
-  background: #f0f7e8 !important;
-  border: 1px solid #d9e9c9 !important;
-  color: #27432a !important;
-  border-radius: 18px;
-}
-.adm .ipz-report-info strong { color: #23402b !important; }
-.adm .ipz-report-info p { color: #536d59 !important;opacity:1; }
-.adm .ipz-report-grid { gap: 15px; }
-.adm .ipz-report-card {
-  background: var(--ipz-admin-surface) !important;
-  color: var(--ipz-admin-ink) !important;
-  border: 1px solid var(--ipz-admin-border) !important;
-  border-radius: 20px;
-  box-shadow: 0 8px 26px rgba(20,45,48,.035);
-  min-width: 0;
-}
-.adm .ipz-report-card small { color: #146b4e !important;letter-spacing: .075em; }
-.adm .ipz-report-card h2 { color: var(--ipz-admin-ink) !important;font-size: clamp(1.35rem, 2vw, 1.75rem); }
-.adm .ipz-report-card p,
-.adm .ipz-report-footnote { color: var(--ipz-admin-muted) !important;opacity:1; }
-.adm .ipz-report-card .ipz-report-download {
-  background: var(--ipz-admin-lime) !important;
-  color: #142015 !important;
-  border: 0 !important;
-  border-radius: 999px;
-  box-shadow: none;
-}
-.adm .ipz-report-card .ipz-report-download:hover { background: #bbe600 !important; }
-@media (max-width: 740px) {
-  .adm #ipz-community-admin .ipz-com-grid {grid-template-columns: repeat(2, minmax(0,1fr));}
-  .adm #ipz-community-admin .ipz-com-form {grid-template-columns:1fr;}
-  .adm #ipz-community-admin .ipz-com-form .wide {grid-column:auto;}
-}
-@media (max-width: 520px) {
-  .adm #ipz-community-admin .ipz-com-grid {grid-template-columns:1fr;}
-  .adm .ipz-report-grid {grid-template-columns:1fr;}
-  .adm .ipz-report-info {padding:16px;}
-  .adm .ipz-report-card {padding:20px;}
-}
-@media (prefers-reduced-motion: reduce) {
-  .adm #ipz-community-admin button {transition: none !important;transform: none !important;}
-}
-
-/* V31: defesa contra o bloco informativo obsoleto carregado de uma sessão anterior. */
-.adm .ad-sb > .ad-card { display: none !important; }
-
-
-/* V33 | Identidade cromática unificada do Admin
-   ÚNICA cor de destaque: #CFF902, a mesma de Terminar sessão.
-   Escopo exclusivo do painel, sem afectar a loja pública. */
-body.adm #adm {
-  --ipz-admin-accent: #CFF902;
-  --ipz-admin-accent-hover: #BCE600;
-  --ipz-admin-accent-ink: #142015;
-  --ipz-admin-soft: #F4F8E5;
-  --ipz-admin-ink: #12212B;
-}
-/* Cartões de indicadores antes com gradientes verde escuro */
-body.adm .ad-wrap .kp.k1,
-body.adm .ad-wrap .kp.k2,
-body.adm .ad-wrap .k1,
-body.adm .ad-wrap .k2 {
-  background: var(--ipz-admin-accent) !important;
-  background-image: none !important;
-  color: var(--ipz-admin-accent-ink) !important;
-}
-body.adm .ad-wrap .kp.k1 :is(.kt,.kn,small,.gr,.ka),
-body.adm .ad-wrap .kp.k2 :is(.kt,.kn,small,.gr,.ka) {
-  color: var(--ipz-admin-accent-ink) !important;
-}
-body.adm .ad-wrap .kp.k1 .ka,
-body.adm .ad-wrap .kp.k2 .ka {
-  border-color: rgba(20,32,21,.72) !important;
-  background: rgba(255,255,255,.28) !important;
-}
-body.adm .ad-wrap .kp.k1 .ka:hover,
-body.adm .ad-wrap .kp.k2 .ka:hover {background: rgba(255,255,255,.6) !important;}
-/* Botões de acção e saída têm a mesma linguagem visual */
-body.adm .ad-wrap .btn:not(.bo):not(:disabled),
-body.adm .ad-wrap .ad-sb .ad-logout,
-body.adm .ipz-report-download,
-body.adm #ipz-community-admin button:not(.danger):not(:disabled):not(.ipz-com-tab) {
-  background: var(--ipz-admin-accent) !important;
-  background-image: none !important;
-  border-color: var(--ipz-admin-accent) !important;
-  color: var(--ipz-admin-accent-ink) !important;
-}
-body.adm .ad-wrap .btn:not(.bo):not(:disabled):hover,
-body.adm .ad-wrap .ad-sb .ad-logout:hover,
-body.adm .ipz-report-download:hover,
-body.adm #ipz-community-admin button:not(.danger):not(:disabled):not(.ipz-com-tab):hover {
-  background: var(--ipz-admin-accent-hover) !important;
-  border-color: var(--ipz-admin-accent-hover) !important;
-}
-/* Barra de navegação e ícones */
-body.adm .ad-wrap .ad-sb .nl.on {
-  background: var(--ipz-admin-soft) !important;
-  color: var(--ipz-admin-accent-ink) !important;
-}
-body.adm .ad-wrap .ad-sb .nl.on::before {background: var(--ipz-admin-accent) !important;}
-body.adm .ad-wrap .ad-sb .nl.on i,
-body.adm .ad-wrap .ad-sb .nl.on i svg {color: var(--ipz-admin-accent-ink) !important;}
-body.adm .ad-wrap .ad-sb .nl:hover {background: var(--ipz-admin-soft) !important;}
-body.adm .ad-wrap .ad-pf i,
-body.adm .ipz-login-mark {background: var(--ipz-admin-accent) !important;color:var(--ipz-admin-accent-ink) !important;}
-/* Gráficos e realces de informação */
-body.adm .ad-wrap .bb.hi,
-body.adm .ad-wrap .bb.md {background:var(--ipz-admin-accent) !important;color:var(--ipz-admin-accent-ink) !important;}
-body.adm .ad-wrap .bb.hz {background:repeating-linear-gradient(135deg,#e5eaed 0 4px,#f5f7f8 4px 8px) !important;}
-body.adm .ad-wrap .kp .gr,
-body.adm #ipz-community-admin [role="status"],
-body.adm .ipz-report-card small,
-body.adm #ipz-community-admin details > summary {color:#425208 !important;}
-body.adm .ipz-report-info {background:#F7FBEA !important;border-color:#DDEAB5 !important;color:#26311C !important;}
-/* Acessibilidade e preservação das cores de erro */
-body.adm button:focus-visible,body.adm a:focus-visible {outline:3px solid var(--ipz-admin-accent) !important;outline-offset:3px;}
-body.adm button.danger,body.adm .cp2.r {background:#fff0f0 !important;color:#a32432 !important;border-color:#e6bec1 !important;}
-@media(prefers-color-scheme: dark){body.adm .ad-wrap .kp.k1,body.adm .ad-wrap .kp.k2 {color:#142015 !important;}}
-/* Etiquetas de sucesso e barras: o único verde é o institucional. */
-body.adm .cp2.g {background:#CFF902 !important;color:#142015 !important;}
-body.adm .ad-wrap .bb.hi,body.adm .ad-wrap .bb.md {color:#142015 !important;}
-
-/* V43: os pictogramas mantêm os seus tons geométricos sem preenchimento CSS herdado. */
-.adm .nl i:has(.ipz-symbol) svg{fill:none!important;stroke:none!important;opacity:1!important}
+/* V37: avatar compacto e criação de perfil com credenciais próprias. */
+.adm .ipz-profile-trigger.ipz-profile-initial-only{width:52px;height:52px;padding:4px;display:grid;place-items:center;border-radius:50%;background:transparent;flex:none}
+.adm .ipz-profile-trigger.ipz-profile-initial-only>i{width:44px;height:44px;font-size:17px;margin:0}
+.adm .ipz-profile-trigger.ipz-profile-initial-only:hover,.adm .ipz-profile-trigger.ipz-profile-initial-only:focus-visible{border-color:#CFF902;background:#f4f9df;outline:2px solid #CFF902;outline-offset:2px}
+.adm .ipz-panel-credentials{margin-top:16px;margin-bottom:10px}
+.adm .ipz-credential-wide{grid-column:1/-1}
+.adm .ipz-password-hint{margin:4px 0 18px;color:#53656a;font-size:12px;line-height:1.5}
+.adm .ipz-profile-dialog input:invalid:not(:placeholder-shown){border-color:#be5959}
+@media(max-width:620px){.adm .ipz-profile-trigger.ipz-profile-initial-only{width:48px;height:48px}}
