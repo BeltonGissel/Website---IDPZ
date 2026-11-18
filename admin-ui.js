@@ -20,7 +20,7 @@
  };
  const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');
  let previousArea='',animated=false,timeout=null;
- function svg(name){return '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">'+PATHS[name]+'</svg>';}
+ function svg(name){return window.IPZIcons ? window.IPZIcons.svg(name) : '<svg aria-hidden="true" focusable="false" viewBox="0 0 24 24">'+PATHS[name]+'</svg>';}
  function sidebar(){const sb=document.querySelector('.adm .ad-sb');if(!sb)return;
    sb.querySelectorAll('.nl').forEach((a,i)=>{const key=a.hasAttribute('data-logout')?'logout':(a.getAttribute('href')||'').replace('#','');const target=a.querySelector(':scope > i');if(target&&PATHS[key]&&target.dataset.icon!==key){target.innerHTML=svg(key);target.dataset.icon=key;}a.style.setProperty('--item-order',i);});
    // Garante que o botão de saída é o último elemento, inclusive após actualizações anteriores.
