@@ -344,3 +344,6 @@ body.adm button.danger,body.adm .cp2.r {background:#fff0f0 !important;color:#a32
 /* Etiquetas de sucesso e barras: o único verde é o institucional. */
 body.adm .cp2.g {background:#CFF902 !important;color:#142015 !important;}
 body.adm .ad-wrap .bb.hi,body.adm .ad-wrap .bb.md {color:#142015 !important;}
+
+/* V43: os pictogramas mantêm os seus tons geométricos sem preenchimento CSS herdado. */
+.adm .nl i:has(.ipz-symbol) svg{fill:none!important;stroke:none!important;opacity:1!important}
